@@ -1,0 +1,11 @@
+# Entorno y dependencias de desarrollo
+node_modules/
+vendor/
+.wp-env-cache/
+
+# Salida del simulador
+var/
+
+# PHP
+.phpunit.result.cache
+phpcs-report/

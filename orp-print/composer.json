@@ -1,0 +1,28 @@
+{
+	"name": "orvita/orp-print",
+	"description": "Cola de impresión para locales físicos: pedidos de WooCommerce en documentos neutros para el agente del TPV.",
+	"type": "wordpress-plugin",
+	"license": "GPL-2.0-or-later",
+	"require": {
+		"php": ">=8.1"
+	},
+	"require-dev": {
+		"phpunit/phpunit": "^9.6",
+		"squizlabs/php_codesniffer": "^3.10",
+		"wp-coding-standards/wpcs": "^3.1"
+	},
+	"autoload": {
+		"psr-4": {
+			"Orvita\\PrintBridge\\": "src/"
+		}
+	},
+	"config": {
+		"platform": {
+			"php": "8.1"
+		}
+	},
+	"scripts": {
+		"test": "phpunit",
+		"lint": "phpcs --standard=WordPress src/"
+	}
+}
