@@ -31,6 +31,13 @@ final class Auth {
 	 * @return true|\WP_Error
 	 */
 	public static function check( \WP_REST_Request $request ) {
+		// WordPress reinvoca el permission_callback al calcular la cabecera
+		// Allow (rest_send_allow_header, núcleo rest-api.php). Si el agente ya
+		// está autenticado en esta misma petición, no revalida ni re-cuenta.
+		if ( is_array( self::$current_agent ) ) {
+			return true;
+		}
+
 		$token = self::extract_token( $request );
 
 		if ( null === $token || '' === $token ) {

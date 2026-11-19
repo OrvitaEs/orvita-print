@@ -256,6 +256,7 @@ Si algo de esto falla, F0 no está cerrado y F1 no empieza.
 
 ## 11. Trampas conocidas
 
+- **Permission callbacks con efectos: WordPress reinvoca el `permission_callback`** al calcular la cabecera `Allow` (`rest_send_allow_header`, núcleo `rest-api.php`). Cada petición REST ejecuta el callback **dos veces**: una en el despacho y otra para el header. Regla: el callback de permisos debe ser **idempotente y sin efectos** (sin contadores ni escrituras). En `Auth::check()` la segunda invocación se detecta con el agente ya resuelto en la petición y devuelve `true` sin recontar ni reconsultar.
 - **Cabecera `Authorization`**: algunos hostings la eliminan. Aceptar también `X-Orp-Token` y comprobarlo en el servidor real del piloto.
 - **`dbDelta`**: formato estricto (dos espacios en `PRIMARY KEY`, sin claves foráneas). Una tabla por llamada si hay dudas.
 - **Zona horaria**: guardar UTC en base de datos y mostrar con `wp_date()` y `wp_timezone()`.
