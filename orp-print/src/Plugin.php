@@ -50,8 +50,11 @@ final class Plugin {
 		// API REST (Doc 04 §5): salud, trabajos, heartbeat y configuración.
 		Rest\Router::register();
 
-		// Panel de administración mínimo (el completo llega en F1-01).
+		// Panel de administración: menú, ajustes (F1-01), locales y avisos (F1-02).
 		Admin\Menu::register();
+		Admin\SettingsPage::register();
+		Admin\LocationsPage::register();
+		Admin\Notices::register();
 
 		// Comando de siembra para F0: `wp orp seed` (F0-08).
 		if ( defined( 'WP_CLI' ) && \WP_CLI ) {
