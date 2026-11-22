@@ -25,6 +25,58 @@ final class Auth {
 	private static ?array $current_agent = null;
 
 	/**
+	 * Segundos de Retry-After de la petición 429 en curso; null si no hay.
+	 * Lo rellena rate_limit() y lo lee add_retry_after_header(): no se puede
+	 * usar header() porque REST todavía no ha emitido la respuesta.
+	 */
+	public static ?int $rate_limited_after = null;
+
+	/**
+	 * Engancha la cabecera Retry-After a la respuesta 429 (B1, Doc/03 §8 S-04).
+	 * Se registra en Router::register(), antes de cualquier petición REST.
+	 */
+	public static function register_hooks(): void {
+		add_filter( 'rest_post_dispatch', array( self::class, 'add_retry_after_header' ), 10, 3 );
+	}
+
+	/**
+	 * Añade Retry-After a la respuesta 429 del límite de peticiones. En este
+	 * punto la respuesta ya es WP_REST_Response (rest_post_dispatch): añadir
+	 * la cabecera al objeto es asercable en pruebas, a diferencia de header().
+	 *
+	 * @param mixed            $response Respuesta REST en curso.
+	 * @param \WP_REST_Server  $server   Servidor REST (no se usa).
+	 * @param \WP_REST_Request $request  Petición REST (no se usa).
+	 * @return mixed La misma respuesta, con la cabecera si corresponde.
+	 */
+	public static function add_retry_after_header( $response, $server, $request ) {
+		unset( $server, $request );
+
+		if ( null === self::$rate_limited_after
+			|| ! $response instanceof \WP_REST_Response
+			|| 429 !== $response->get_status() ) {
+			return $response;
+		}
+
+		$data = $response->get_data();
+		if ( is_array( $data ) && isset( $data['code'] ) && 'orp_rate_limited' === $data['code'] ) {
+			$response->header( 'Retry-After', (string) max( 1, self::$rate_limited_after ) );
+		}
+
+		return $response;
+	}
+
+	/**
+	 * Restablece el estado por petición (agente autenticado y Retry-After).
+	 * En HTTP cada petición es un proceso nuevo; esto sirve para CLI, wp eval
+	 * y pruebas, donde el proceso y la estática sobreviven a varias dispatches.
+	 */
+	public static function reset(): void {
+		self::$current_agent      = null;
+		self::$rate_limited_after = null;
+	}
+
+	/**
 	 * Callback de permisos REST: autentica el token y aplica el límite de
 	 * peticiones. Si todo va bien, deja el agente autenticado en la petición.
 	 *
@@ -150,7 +202,11 @@ final class Auth {
 	 * @return true|\WP_Error
 	 */
 	private static function rate_limit( int $agent_id ) {
-		$key   = 'orp_rl_' . $agent_id;
+		$key = 'orp_rl_' . $agent_id;
+
+		// Limpia el estado de la petición anterior (ciclo de vida por petición).
+		self::$rate_limited_after = null;
+
 		$count = get_transient( $key );
 
 		if ( false === $count ) {
@@ -161,7 +217,8 @@ final class Auth {
 		$remaining = self::transient_ttl( $key );
 
 		if ( (int) $count >= self::RATE_LIMIT_PER_WINDOW ) {
-			header( 'Retry-After: ' . max( 1, $remaining ) );
+			// La cabecera la añade add_retry_after_header() en rest_post_dispatch (B1).
+			self::$rate_limited_after = max( 1, $remaining );
 			return self::error( 'orp_rate_limited', __( 'Demasiadas peticiones. Aplica retroceso.', 'orp-print' ), 429 );
 		}
 

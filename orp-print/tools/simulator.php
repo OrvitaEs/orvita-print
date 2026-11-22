@@ -15,6 +15,7 @@
  * Uso:
  *   php tools/simulator.php --url=http://localhost:8888 --token=TOKEN --once
  *   php tools/simulator.php --url=http://localhost:8888 --token=TOKEN --fail=orp_printer_not_found
+ *   php tools/simulator.php --url=http://localhost:8888 --token=TOKEN --fail   (sin código: orp_printer_not_found)
  *   php tools/simulator.php --url=http://localhost:8888 --token=TOKEN --interval=5
  */
 
@@ -27,7 +28,14 @@ $opts = getopt( '', array( 'url::', 'token::', 'once', 'fail::', 'interval::' ) 
 $base_url = isset( $opts['url'] ) ? rtrim( (string) $opts['url'], '/' ) : '';
 $token    = isset( $opts['token'] ) ? trim( (string) $opts['token'] ) : '';
 $once     = isset( $opts['once'] );
-$fail_code = ( isset( $opts['fail'] ) && true !== $opts['fail'] ) ? (string) $opts['fail'] : null;
+// B8: `--fail` sin argumento usa orp_printer_not_found (código del contrato, Doc/04 §6);
+// antes dejaba last_error vacío en el servidor.
+$fail_code = null;
+if ( isset( $opts['fail'] ) ) {
+	$fail_code = ( true === $opts['fail'] || '' === trim( (string) $opts['fail'] ) )
+		? 'orp_printer_not_found'
+		: trim( (string) $opts['fail'] );
+}
 $interval = max( 2, isset( $opts['interval'] ) ? (int) $opts['interval'] : 10 );
 
 if ( '' === $base_url || '' === $token ) {
@@ -41,6 +49,26 @@ $jobs_dir = __DIR__ . '/../var/jobs';
 if ( ! is_dir( $jobs_dir ) && ! mkdir( $jobs_dir, 0775, true ) && ! is_dir( $jobs_dir ) ) {
 	fwrite( STDERR, "No se pudo crear la carpeta de trabajos: {$jobs_dir}\n" );
 	exit( 1 );
+}
+
+// B7: salidas activas de este equipo. El simulador solo reclama trabajos cuyo
+// printer_role coincida con una salida activa que él mismo reporta en el
+// heartbeat (Doc/04 §5.8). Si el rol no existe localmente, el trabajo queda
+// pending en el servidor.
+$destinations = array(
+	array(
+		'role'         => 'default',
+		'label'        => 'Mostrador',
+		'printer_name' => 'Simuladora Virtual',
+		'copies'       => 1,
+		'enabled'      => true,
+	),
+);
+$active_roles = array();
+foreach ( $destinations as $destination ) {
+	if ( ! empty( $destination['enabled'] ) ) {
+		$active_roles[] = (string) $destination['role'];
+	}
 }
 
 orp_say( 'Simulador de agente de Orvita Print' );
@@ -70,15 +98,7 @@ do {
 			'agent_version' => 'simulator-1.0.0',
 			'pending_local' => null,
 			'last_error'    => null,
-			'destinations'  => array(
-				array(
-					'role'         => 'default',
-					'label'        => 'Mostrador',
-					'printer_name' => 'Simuladora Virtual',
-					'copies'       => 1,
-					'enabled'      => true,
-				),
-			),
+			'destinations'  => $destinations,
 		)
 	);
 	if ( 401 === $status ) {
@@ -110,6 +130,14 @@ do {
 	foreach ( $jobs as $job ) {
 		$job_id = (int) ( $job['id'] ?? 0 );
 		if ( $job_id <= 0 ) {
+			continue;
+		}
+
+		// B7: no reclama trabajos de salidas que no están activas en este equipo.
+		$job_role = (string) ( $job['printer_role'] ?? '' );
+		if ( ! in_array( $job_role, $active_roles, true ) ) {
+			orp_say( "Trabajo {$job_id}: printer_role «{$job_role}» sin salida activa aquí; queda pending en el servidor." );
+			$cursor = max( $cursor, $job_id );
 			continue;
 		}
 

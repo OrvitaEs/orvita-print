@@ -111,6 +111,11 @@ final class JobsController {
 	/**
 	 * POST /jobs/{id}/claim — reclamo atómico (Doc/04 §4).
 	 * 200 con el trabajo · 409 si otro lo cogió · 410 si caducó · 404 si no es del local.
+	 *
+	 * F0-11: los cuerpos de 409 y 410 son el JSON literal de Doc/04 §5.5
+	 * ({"error":...}), no el envoltorio estándar de WP_Error, para que el
+	 * agente los parseé sin adaptaciones. El 404 sí usa el envoltorio
+	 * estándar: el contrato no define su cuerpo literal.
 	 */
 	public static function handle_claim( \WP_REST_Request $request ) {
 		$agent  = Auth::agent( $request );
@@ -134,14 +139,19 @@ final class JobsController {
 		}
 
 		if ( null === $job || self::is_expired( $job ) ) {
-			return self::error( 'orp_job_expired', __( 'El trabajo ha caducado y no se imprimirá.', 'orp-print' ), 410 );
+			// 410 — cuerpo literal del contrato (Doc/04 §5.5).
+			return new \WP_REST_Response( array( 'error' => 'orp_job_expired' ), 410 );
 		}
 
-		return self::error(
-			'orp_already_claimed',
-			__( 'El trabajo ya no está pendiente.', 'orp-print' ),
-			409,
-			array( 'job_status' => (string) $job->status )
+		// 409 — cuerpo literal del contrato (Doc/04 §5.5). «status» es el estado
+		// real del trabajo; en el caso típico de carrera es «claimed», que es
+		// exactamente el ejemplo del contrato.
+		return new \WP_REST_Response(
+			array(
+				'error'  => 'orp_already_claimed',
+				'status' => (string) $job->status,
+			),
+			409
 		);
 	}
 
@@ -357,7 +367,11 @@ final class JobsController {
 		return (int) $affected > 0;
 	}
 
-	/** Trabajos pendientes del local, con cursor por id (nunca por fecha). */
+	/**
+	 * Trabajos pendientes del local, con cursor por id (nunca por fecha).
+	 * B2: los caducados (expires_at en el pasado) no se sirven; siguen
+	 * «pending» hasta que el Reaper los marque (F1-09).
+	 */
 	public static function pending_for_location( int $location_id, int $after, int $limit ): array {
 		global $wpdb;
 
@@ -370,17 +384,22 @@ final class JobsController {
 				   FROM {$table}
 				  WHERE location_id = %d
 				    AND status = 'pending'
+				    AND expires_at > %s
 				    AND id > %d
 				  ORDER BY id ASC
 				  LIMIT %d",
 				$location_id,
+				Clock::now_sql(),
 				$after,
 				$limit
 			)
 		);
 	}
 
-	/** Nº de trabajos pendientes de un local (para el heartbeat). */
+	/**
+	 * Nº de trabajos pendientes de un local (para el heartbeat). Con B2, los
+	 * caducados no cuentan: el agente no vería trabajos que el poll no sirve.
+	 */
 	public static function pending_count( int $location_id ): int {
 		global $wpdb;
 
@@ -389,8 +408,9 @@ final class JobsController {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		return (int) $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT COUNT(*) FROM {$table} WHERE location_id = %d AND status = 'pending'",
-				$location_id
+				"SELECT COUNT(*) FROM {$table} WHERE location_id = %d AND status = 'pending' AND expires_at > %s",
+				$location_id,
+				Clock::now_sql()
 			)
 		);
 	}

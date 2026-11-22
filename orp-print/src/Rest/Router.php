@@ -24,6 +24,9 @@ final class Router {
 
 	/** Registra el hook que crea las rutas. */
 	public static function register(): void {
+		// Cabecera Retry-After en el 429 del límite de peticiones (B1).
+		Auth::register_hooks();
+
 		add_action( 'rest_api_init', array( self::class, 'register_routes' ) );
 	}
 

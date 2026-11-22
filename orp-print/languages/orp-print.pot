@@ -144,3 +144,43 @@ msgstr ""
 #: src/Admin/SettingsPage.php
 msgid "nunca"
 msgstr ""
+
+#: src/Cli/SeedCommand.php
+msgid "Datos de siembra anteriores eliminados."
+msgstr ""
+
+#: src/Cli/SeedCommand.php
+msgid "La siembra ya existe. Usa «wp orp seed --reset» para regenerarla (el token anterior quedará revocado al borrar el agente)."
+msgstr ""
+
+#: src/Cli/SeedCommand.php
+msgid "Entorno listo: 3 locales, 1 salida, 1 agente y 1 trabajo de prueba."
+msgstr ""
+
+#: src/Cli/SeedCommand.php
+msgid "Locales: %s"
+msgstr ""
+
+#: src/Cli/SeedCommand.php
+msgid "Agente: %1$s (local %2$s)"
+msgstr ""
+
+#: src/Cli/SeedCommand.php
+msgid "Trabajo de prueba: %s"
+msgstr ""
+
+#: src/Cli/SeedCommand.php
+msgid "ya existía (idempotencia)"
+msgstr ""
+
+#: src/Cli/SeedCommand.php
+msgid "ATENCIÓN: el token del agente solo se muestra una vez. Cópialo ahora:"
+msgstr ""
+
+#: src/Cli/SeedCommand.php
+msgid "Prueba el contrato con el simulador:"
+msgstr ""
+
+#: src/Cli/SeedCommand.php
+msgid "php tools/simulator.php --url=<URL-del-sitio> --token=%s --once"
+msgstr ""

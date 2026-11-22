@@ -21,6 +21,10 @@ final class DestinationRepository {
 	 * Upsert por (location_id, role): el agente reporta sus salidas en cada
 	 * heartbeat y el plugin las guarda sin duplicar (Doc/04 §5.3).
 	 *
+	 * B5: una sola consulta INSERT ... ON DUPLICATE KEY UPDATE sobre la clave
+	 * única location_role. Sin SELECT previo: dos heartbeats concurrentes no
+	 * pueden dejar filas duplicadas (clave única) ni sobrescribirse.
+	 *
 	 * @param int   $location_id Local al que pertenece la salida.
 	 * @param array $destination role, label, printer_name, copies, enabled.
 	 */
@@ -34,46 +38,26 @@ final class DestinationRepository {
 		$copies  = max( 1, (int) ( $destination['copies'] ?? 1 ) );
 		$enabled = ! empty( $destination['enabled'] );
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		$existing = (int) $wpdb->get_var(
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Upsert atómico sobre la clave única (location_id, role).
+		$wpdb->query(
 			$wpdb->prepare(
-				"SELECT id FROM {$table} WHERE location_id = %d AND role = %s",
+				"INSERT INTO {$table}
+					(location_id, role, label, printer_name, copies, enabled, updated_at)
+				 VALUES (%d, %s, %s, %s, %d, %d, %s)
+				 ON DUPLICATE KEY UPDATE
+					label        = VALUES(label),
+					printer_name = VALUES(printer_name),
+					copies       = VALUES(copies),
+					enabled      = VALUES(enabled),
+					updated_at   = VALUES(updated_at)",
 				$location_id,
-				$role
+				$role,
+				$label,
+				$printer,
+				$copies,
+				$enabled ? 1 : 0,
+				Clock::now_sql()
 			)
-		);
-
-		if ( $existing > 0 ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-			$wpdb->update(
-				$table,
-				array(
-					'label'        => $label,
-					'printer_name' => $printer,
-					'copies'       => $copies,
-					'enabled'      => $enabled ? 1 : 0,
-					'updated_at'   => Clock::now_sql(),
-				),
-				array( 'id' => $existing ),
-				array( '%s', '%s', '%d', '%d', '%s' ),
-				array( '%d' )
-			);
-			return;
-		}
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		$wpdb->insert(
-			$table,
-			array(
-				'location_id'  => $location_id,
-				'role'         => $role,
-				'label'        => $label,
-				'printer_name' => $printer,
-				'copies'       => $copies,
-				'enabled'      => $enabled ? 1 : 0,
-				'updated_at'   => Clock::now_sql(),
-			),
-			array( '%d', '%s', '%s', '%s', '%d', '%d', '%s' )
 		);
 	}
 

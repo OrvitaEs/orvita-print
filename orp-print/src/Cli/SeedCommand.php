@@ -52,11 +52,11 @@ final class SeedCommand {
 
 		if ( ! empty( $assoc_args['reset'] ) ) {
 			self::reset();
-			\WP_CLI::log( 'Datos de siembra anteriores eliminados.' );
+			\WP_CLI::log( __( 'Datos de siembra anteriores eliminados.', 'orp-print' ) );
 		}
 
 		if ( null !== self::find_agent() ) {
-			\WP_CLI::warning( 'La siembra ya existe. Usa «wp orp seed --reset» para regenerarla (el token anterior quedará revocado al borrar el agente).' );
+			\WP_CLI::warning( __( 'La siembra ya existe. Usa «wp orp seed --reset» para regenerarla (el token anterior quedará revocado al borrar el agente).', 'orp-print' ) );
 			return;
 		}
 
@@ -98,17 +98,21 @@ final class SeedCommand {
 			'seed'
 		);
 
-		\WP_CLI::success( 'Entorno listo: 3 locales, 1 salida, 1 agente y 1 trabajo de prueba.' );
-		\WP_CLI::log( sprintf( 'Locales: %s', implode( ', ', array_column( $locations, 'code' ) ) ) );
-		\WP_CLI::log( sprintf( 'Agente: %s (local %s)', self::AGENT_NAME, $location['code'] ) );
-		\WP_CLI::log( sprintf( 'Trabajo de prueba: %s', $job_id ? '#' . $job_id : 'ya existía (idempotencia)' ) );
+		\WP_CLI::success( __( 'Entorno listo: 3 locales, 1 salida, 1 agente y 1 trabajo de prueba.', 'orp-print' ) );
+		/* translators: %s: códigos de los locales separados por comas. */
+		\WP_CLI::log( sprintf( __( 'Locales: %s', 'orp-print' ), implode( ', ', array_column( $locations, 'code' ) ) ) );
+		/* translators: 1: nombre del agente, 2: código del local. */
+		\WP_CLI::log( sprintf( __( 'Agente: %1$s (local %2$s)', 'orp-print' ), self::AGENT_NAME, $location['code'] ) );
+		/* translators: %s: id del trabajo o «ya existía (idempotencia)». */
+		\WP_CLI::log( sprintf( __( 'Trabajo de prueba: %s', 'orp-print' ), $job_id ? '#' . $job_id : __( 'ya existía (idempotencia)', 'orp-print' ) ) );
 		\WP_CLI::log( '' );
 
-		\WP_CLI::log( \WP_CLI::colorize( '%YATENCIÓN: el token del agente solo se muestra una vez. Cópialo ahora:%n' ) );
+		\WP_CLI::log( \WP_CLI::colorize( '%Y' . __( 'ATENCIÓN: el token del agente solo se muestra una vez. Cópialo ahora:', 'orp-print' ) . '%n' ) );
 		\WP_CLI::log( \WP_CLI::colorize( '%G' . $token['token'] . '%n' ) );
 		\WP_CLI::log( '' );
-		\WP_CLI::log( 'Prueba el contrato con el simulador:' );
-		\WP_CLI::log( sprintf( 'php tools/simulator.php --url=<URL-del-sitio> --token=%s --once', $token['token'] ) );
+		\WP_CLI::log( __( 'Prueba el contrato con el simulador:', 'orp-print' ) );
+		/* translators: %s: token del agente (no se traduce la sintaxis del comando). */
+		\WP_CLI::log( sprintf( __( 'php tools/simulator.php --url=<URL-del-sitio> --token=%s --once', 'orp-print' ), $token['token'] ) );
 	}
 
 	/* ---------------------------------------------------------------------
