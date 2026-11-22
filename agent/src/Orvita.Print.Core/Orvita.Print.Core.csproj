@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Núcleo portable del agente Orvita Print: ITransport, DirectTransport, poller con backoff/jitter. Sin referencias a Windows (ADR-12).</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Orvita.Print.Contracts\Orvita.Print.Contracts.csproj" />
+  </ItemGroup>
+</Project>

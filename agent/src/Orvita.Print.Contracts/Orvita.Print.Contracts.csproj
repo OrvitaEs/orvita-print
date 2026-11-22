@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Modelos del contrato Orvita Print: documento neutro v1, JobBatch, JobResult y códigos de error (Doc/04 §5–§9). Contrato congelado.</Description>
+  </PropertyGroup>
+</Project>
