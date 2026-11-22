@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Orvita.Print.Contracts;
 
 namespace Orvita.Print.Core;
@@ -12,7 +13,7 @@ namespace Orvita.Print.Core;
 /// error del contrato (Doc/04 §6) en sus dos formas: cuerpo literal (409/410) y
 /// envoltorio estándar de WordPress (401/429).
 /// </summary>
-public sealed class DirectTransport : ITransport, IDisposable
+public sealed class DirectTransport : ITransport, IJobReleaseTransport, IDisposable
 {
     /// <summary>Límite del servidor: Doc/04 §5.4, "limit" máximo 20.</summary>
     public const int MaxFetchLimit = 20;
@@ -168,6 +169,39 @@ public sealed class DirectTransport : ITransport, IDisposable
 
         return await ReadAsync<AgentConfig>(response, ct).ConfigureAwait(false)
             ?? throw new TransportProtocolException(response.StatusCode, ErrorCode.Unknown, "GET /config devolvió un cuerpo vacío.");
+    }
+
+    /// <summary>
+    /// POST /jobs/{id}/release (Doc/04 §5.7): devuelve un trabajo reclamado a pending sin consumir
+    /// intento, ante fallo transitorio (spooler ocupado, red). Un 409/410/404 (ya liberado, caducado
+    /// o ajeno) se considera logrado: el trabajo ya no es nuestro problema.
+    /// </summary>
+    public async Task ReleaseAsync(long jobId, string reason, CancellationToken ct)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        var url = new Uri(_baseUri, $"jobs/{jobId}/release");
+        using var content = new StringContent(
+            JsonSerializer.Serialize(new ReleaseRequest(reason), OrpJson.Default), Encoding.UTF8, "application/json");
+        using var response = await SendAsync(HttpMethod.Post, url, content, ct).ConfigureAwait(false);
+
+        if (response.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        if (response.StatusCode is HttpStatusCode.Conflict or HttpStatusCode.Gone or HttpStatusCode.NotFound)
+        {
+            return;
+        }
+
+        await ThrowForErrorAsync(response, ct, $"POST /jobs/{jobId}/release").ConfigureAwait(false);
+    }
+
+    /// <summary>Cuerpo de POST /jobs/{id}/release (Doc/04 §5.7).</summary>
+    private sealed class ReleaseRequest(string reason)
+    {
+        [JsonPropertyName("reason")]
+        public string Reason { get; set; } = reason;
     }
 
     // ---------------------------------------------------------------- internals

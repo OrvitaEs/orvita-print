@@ -192,6 +192,47 @@ public sealed class OutboxRepository : IDisposable
     }
 
     /// <summary>
+    /// Reclama un trabajo concreto por id (received → printing), p. ej. el que acaba de llegar
+    /// del servidor. Devuelve false si no está en <c>received</c> (ya reclamado, terminal o inexistente).
+    /// Complemento por id de <see cref="TryClaimNext"/> (FIFO), que queda para drenajes por orden de llegada.
+    /// </summary>
+    public bool TryClaim(long jobId)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE outbox_jobs
+            SET state = 'printing', attempts = attempts + 1, updated_at = $now
+            WHERE job_id = $job_id AND state = 'received'
+            RETURNING job_id;
+            """;
+        command.Parameters.AddWithValue("$job_id", jobId);
+        command.Parameters.AddWithValue("$now", Now());
+
+        using var reader = command.ExecuteReader();
+        return reader.Read();
+    }
+
+    /// <summary>
+    /// Devuelve un trabajo en <c>printing</c> a <c>received</c> conservando el documento: se usa
+    /// tras un fallo transitorio de impresión (spooler ocupado, red) para reintentar sin mentir
+    /// en el estado local. No toca <c>duplicate_suspected</c> ni los intentos ya contados.
+    /// </summary>
+    public bool ResetToReceived(long jobId)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE outbox_jobs
+            SET state = 'received', updated_at = $now
+            WHERE job_id = $job_id AND state = 'printing';
+            """;
+        command.Parameters.AddWithValue("$job_id", jobId);
+        command.Parameters.AddWithValue("$now", Now());
+        return command.ExecuteNonQuery() > 0;
+    }
+
+    /// <summary>
     /// Marca el trabajo como <c>done</c> (impreso). Solo transiciona desde <c>printing</c>: devuelve
     /// false si el trabajo no estaba en printing (p. ej. la recuperación de arranque lo reencoló).
     /// </summary>
