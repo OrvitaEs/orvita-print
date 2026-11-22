@@ -2,8 +2,10 @@
   <Folder Name="/src/">
     <Project Path="src/Orvita.Print.Contracts/Orvita.Print.Contracts.csproj" />
     <Project Path="src/Orvita.Print.Core/Orvita.Print.Core.csproj" />
+    <Project Path="src/Orvita.Print.Printing.Windows/Orvita.Print.Printing.Windows.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Orvita.Print.Core.Tests/Orvita.Print.Core.Tests.csproj" />
+    <Project Path="tests/Orvita.Print.Printing.Windows.Tests/Orvita.Print.Printing.Windows.Tests.csproj" />
   </Folder>
 </Solution>

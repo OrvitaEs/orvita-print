@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    ADR-12: único proyecto que toca APIs de Windows (winspool.drv, GDI) y de impresión.
+    TFM net10.0-windows: declara el requisito de Windows y habilita System.Drawing.Common.
+    El resto de la solución sigue en net10.0 portable (Directory.Build.props).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Description>Transportes de impresión de Orvita Print para Windows: spooler RAW (winspool.drv P/Invoke), respaldo GDI (System.Drawing.Printing), TCP 9100, enumeración de impresoras (EnumPrinters) y decodificador PNG puro (.NET) para logos.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Orvita.Print.Core\Orvita.Print.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Solo para el respaldo GDI (System.Drawing.Printing). El PNG del contrato (Doc/04 §7.2)
+         se decodifica con .NET puro (PngDecoder), sin pasar por aquí. -->
+    <PackageReference Include="System.Drawing.Common" Version="10.0.0" />
+  </ItemGroup>
+
+</Project>
