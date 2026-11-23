@@ -57,6 +57,20 @@ final class HeartbeatController {
 		// Saneado y upsert compartidos con POST /pair (F1-07): una sola lógica.
 		$upsert_many = DestinationRepository::upsert_many( (int) $agent['location_id'], $destinations );
 
+		// Un descarte del servidor deja rastro en orp_logs (hallazgo del E2E):
+		// el agente puede mandar salidas sin printer_name ni address y hasta
+		// ahora el rechazo era invisible en el panel.
+		if ( $upsert_many['rejected'] > 0 ) {
+			Logger::log(
+				'warning',
+				'agents',
+				'Salidas rechazadas en el heartbeat.',
+				null,
+				(int) $agent['id'],
+				array( 'rechazadas' => $upsert_many['rejected_items'] )
+			);
+		}
+
 		return new \WP_REST_Response(
 			array(
 				'ok'             => true,

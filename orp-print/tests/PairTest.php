@@ -468,6 +468,122 @@ final class PairTest extends \WP_UnitTestCase {
 		$this->assertSame( 99, (int) $by_role['ok']->copies, 'Copias 1000 acotadas a 99.' );
 	}
 
+	/**
+	 * Fix del E2E con el agente real: un destino sin printer_name pero con la
+	 * dirección (`address`, campo aditivo de Doc/04 §5.3) se guarda con la
+	 * dirección como printer_name; sin address se rechaza y el rechazo se
+	 * detalla en rejected_items (rol + motivo), no se traga.
+	 */
+	public function test_upsert_many_falls_back_to_address_and_lists_rejections(): void {
+		global $wpdb;
+
+		$before = (int) $wpdb->get_var(
+			$wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->prefix}orp_destinations WHERE location_id = %d", $this->location_id )
+		);
+
+		$result = DestinationRepository::upsert_many(
+			$this->location_id,
+			array(
+				// Destino TCP: sin impresora de Windows, la dirección manda.
+				array( 'role' => 'cocina-tcp', 'address' => '192.168.1.50:9100', 'enabled' => true ),
+				// Sin nombre ni dirección: rechazo con rastro.
+				array( 'role' => 'sin-nada' ),
+			)
+		);
+
+		$this->assertSame( 1, $result['upserted'], 'El destino con address se guarda.' );
+		$this->assertSame( 1, $result['rejected'], 'El destino sin nombre ni dirección se rechaza.' );
+		$this->assertCount( 1, $result['rejected_items'], 'El rechazo queda listado, no tragado.' );
+		$this->assertSame( 'sin-nada', (string) $result['rejected_items'][0]['role'] );
+		$this->assertSame( 'sin_impresora', (string) $result['rejected_items'][0]['reason'] );
+
+		$destinations = DestinationRepository::for_location( $this->location_id );
+		$this->assertCount( $before + 1, $destinations );
+
+		$by_role = array();
+		foreach ( $destinations as $destination ) {
+			$by_role[ (string) $destination->role ] = $destination;
+		}
+
+		$this->assertSame( '192.168.1.50:9100', (string) $by_role['cocina-tcp']->printer_name, 'La dirección hace de printer_name.' );
+		$this->assertSame( 'cocina-tcp', (string) $by_role['cocina-tcp']->label, 'Sin label, el rol hace de etiqueta.' );
+		$this->assertArrayNotHasKey( 'sin-nada', $by_role, 'El rechazado no toca la tabla.' );
+	}
+
+	/**
+	 * Fix del E2E, extremo a extremo en POST /heartbeat: la salida con
+	 * `address` y sin `printer_name` crea la fila; la que no trae nada se
+	 * rechaza y deja un `warning` en orp_logs con el rol (sin datos personales).
+	 */
+	public function test_heartbeat_rejects_destination_without_printer_name_and_logs_it(): void {
+		global $wpdb;
+
+		$token = 'orp_e2e_heartbeat_token_test';
+		$now   = \Orvita\PrintBridge\Support\Clock::now_sql();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$wpdb->insert(
+			$wpdb->prefix . 'orp_agents',
+			array(
+				'location_id'  => $this->location_id,
+				'name'         => 'Agente de humo',
+				'token_hash'   => hash( 'sha256', $token ),
+				'token_prefix' => substr( $token, 0, 8 ),
+				'status'       => 'active',
+				'agent_version' => '1.0.0',
+				'platform'     => 'windows',
+				'created_at'   => $now,
+			),
+			array( '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s' )
+		);
+		$agent_id = (int) $wpdb->insert_id;
+
+		$request = new \WP_REST_Request( 'POST', '/orp-print/v1/heartbeat' );
+		$request->set_header( 'authorization', 'Bearer ' . $token );
+		$request->set_param( 'agent_version', '1.0.0' );
+		$request->set_param(
+			'destinations',
+			array(
+				// Con dirección pero sin printer_name: se acepta.
+				array( 'role' => 'tcp', 'address' => '10.0.0.9:9100', 'enabled' => true ),
+				// Ni nombre ni dirección: rechazo con warning.
+				array( 'role' => 'sin-impresora' ),
+			)
+		);
+
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertSame( 200, $response->get_status(), 'El heartbeat con un destino rechazado sigue siendo 200.' );
+
+		// La fila creada usa la dirección como printer_name.
+		$by_role = array();
+		foreach ( DestinationRepository::for_location( $this->location_id ) as $destination ) {
+			$by_role[ (string) $destination->role ] = $destination;
+		}
+
+		$this->assertSame( '10.0.0.9:9100', (string) $by_role['tcp']->printer_name );
+		$this->assertArrayNotHasKey( 'sin-impresora', $by_role );
+
+		// El rechazo deja rastro: warning de contexto agents con el rol y motivo.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Tabla propia, sin caché.
+		$log = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT level, context, agent_id, data
+				   FROM {$wpdb->prefix}orp_logs
+				  WHERE context = 'agents' AND level = 'warning' AND agent_id = %d
+				  ORDER BY id DESC
+				  LIMIT 1",
+				$agent_id
+			)
+		);
+
+		$this->assertNotNull( $log, 'El rechazo del servidor debe quedar en orp_logs.' );
+		$data = (array) json_decode( (string) $log->data, true );
+		$this->assertArrayHasKey( 'rechazadas', $data );
+		$this->assertSame( 'sin-impresora', (string) $data['rechazadas'][0]['role'] );
+		$this->assertSame( 'sin_impresora', (string) $data['rechazadas'][0]['reason'] );
+	}
+
 	/** Solo el primer emparejamiento consume el código (mark_used atómico). */
 	public function test_mark_used_is_atomic(): void {
 		$code  = $this->fresh_code();

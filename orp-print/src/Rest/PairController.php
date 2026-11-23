@@ -182,10 +182,23 @@ final class PairController {
 		// 5. Salidas del cuerpo con la MISMA lógica del heartbeat (Doc/04 §5.3):
 		// upsert por (location_id, role). Los destinos no tocan orp_config_version.
 		$destinations = $request->get_param( 'destinations' );
-		DestinationRepository::upsert_many(
+		$upsert_many  = DestinationRepository::upsert_many(
 			(int) $location['id'],
 			is_array( $destinations ) ? $destinations : array()
 		);
+
+		// Un descarte deja rastro (hallazgo del E2E): sin este log, una salida
+		// rechazada en el emparejamiento no aparecería en ningún sitio.
+		if ( $upsert_many['rejected'] > 0 ) {
+			Logger::log(
+				'warning',
+				'pairing',
+				'Salidas rechazadas en el emparejamiento.',
+				null,
+				$agent_id,
+				array( 'rechazadas' => $upsert_many['rejected_items'] )
+			);
+		}
 
 		// 6. Éxito: la IP vuelve a cero.
 		self::reset_ip_failures( $request );

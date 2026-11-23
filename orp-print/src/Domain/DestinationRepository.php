@@ -72,24 +72,54 @@ final class DestinationRepository {
 	 * Upsert en lote de las salidas de un cuerpo (heartbeat y pair, F1-07):
 	 * saneado y cotas idénticos en ambos caminos (Doc/04 §5.2 y §5.3).
 	 *
+	 * Tolerancia con destinos sin impresora de Windows (hallazgo del E2E con
+	 * el agente real): un destino TCP manda su dirección en el campo `address`
+	 * (aditivo del cuerpo, Doc/04 §5.3) y esa dirección hace de printer_name.
+	 * Sin nombre ni dirección, el rol se rechaza pero QUEDA LISTADO en el
+	 * resultado (`rejected_items`) para que el controlador lo registre en
+	 * orp_logs: un descarte del servidor no es invisible en el panel.
+	 *
+	 * @param int          $location_id  Local al que pertenece la salida.
 	 * @param array<mixed> $destinations Lista cruda del cuerpo.
-	 * @return array{upserted: int, rejected: int} Aceptadas y descartadas.
+	 * @return array{upserted: int, rejected: int, rejected_items: array<int, array{role: string, reason: string}>}
+	 *               Aceptadas, descartadas (recuento) y el rol + motivo de cada descarte.
 	 */
 	public static function upsert_many( int $location_id, array $destinations ): array {
-		$upserted  = 0;
-		$rejected  = 0;
+		$upserted       = 0;
+		$rejected_items = array();
 
 		foreach ( $destinations as $destination ) {
 			if ( ! is_array( $destination ) ) {
-				++$rejected;
+				$rejected_items[] = array(
+					'role'   => '',
+					'reason' => 'no_es_array',
+				);
 				continue;
 			}
 
-			$role         = sanitize_key( (string) ( $destination['role'] ?? '' ) );
+			$role = sanitize_key( (string) ( $destination['role'] ?? '' ) );
+
+			if ( '' === $role ) {
+				$rejected_items[] = array(
+					'role'   => '',
+					'reason' => 'sin_rol',
+				);
+				continue;
+			}
+
 			$printer_name = sanitize_text_field( (string) ( $destination['printer_name'] ?? '' ) );
 
-			if ( '' === $role || '' === $printer_name ) {
-				++$rejected;
+			// Respaldo aditivo (Doc/04 §5.3): la dirección del destino TCP
+			// sustituye al nombre de impresora que no llega.
+			if ( '' === $printer_name ) {
+				$printer_name = sanitize_text_field( (string) ( $destination['address'] ?? '' ) );
+			}
+
+			if ( '' === $printer_name ) {
+				$rejected_items[] = array(
+					'role'   => $role,
+					'reason' => 'sin_impresora',
+				);
 				continue;
 			}
 
@@ -111,8 +141,9 @@ final class DestinationRepository {
 		}
 
 		return array(
-			'upserted' => $upserted,
-			'rejected' => $rejected,
+			'upserted'       => $upserted,
+			'rejected'       => count( $rejected_items ),
+			'rejected_items' => $rejected_items,
 		);
 	}
 

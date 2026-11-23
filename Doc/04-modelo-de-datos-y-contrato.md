@@ -373,6 +373,8 @@ El token se muestra **una sola vez**. El servidor solo guarda su SHA-256.
 
 El agente envía sus salidas en cada heartbeat. Son pocos bytes y evita tener que versionar el cambio. El plugin hace *upsert* por `(location_id, role)`.
 
+> **NOTA aditiva (2026-11-24, hallazgo del E2E con el agente real):** cada elemento de `destinations[]` admite el campo opcional **`address`** (también en `POST /pair` §5.2), p. ej. `"address": "192.168.1.50:9100"` para un destino TCP sin cola de Windows. Si el elemento llega sin `printer_name`, el servidor usa `address` como `printer_name`; si tampoco trae `address`, el rol se rechaza (no se guarda) y el rechazo queda registrado como `warning` en `orp_logs` con el rol y el motivo. Añadir campos con valor por defecto no rompe el contrato (Doc/06 §8).
+
 ```json
 {
   "ok": true,
