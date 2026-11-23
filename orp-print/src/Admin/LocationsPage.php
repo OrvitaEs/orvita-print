@@ -237,8 +237,11 @@ final class LocationsPage {
 		}
 	}
 
-	/** Resumen de una regla para la tabla: «city en [Alcalá, alcala]». */
-	private static function rules_summary( ?string $json ): string {
+	/**
+	 * Resumen de una regla para la tabla: «city en [Alcalá, alcala]».
+	 * Público: la página Estado (F1-10) reutiliza el mismo resumen.
+	 */
+	public static function rules_summary( ?string $json ): string {
 		$rules = json_decode( (string) $json, true );
 		if ( ! is_array( $rules ) || array() === $rules ) {
 			return __( 'Sin reglas (solo local por defecto)', 'orp-print' );

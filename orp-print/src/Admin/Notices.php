@@ -120,8 +120,8 @@ final class Notices {
 				esc_html__( 'Orvita Print:', 'orp-print' )
 			);
 			printf(
-				/* translators: %d: número de trabajos caducados. */
 				esc_html(
+					// translators: %d: número de trabajos caducados.
 					_n(
 						'%d trabajo ha caducado sin imprimirse. Ábrelo en la Cola y reencólalo si lo necesitas.',
 						'%d trabajos han caducado sin imprimirse. Ábrelos en la Cola y reencólalos si los necesitas.',

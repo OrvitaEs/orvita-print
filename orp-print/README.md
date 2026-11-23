@@ -4,7 +4,8 @@ Plugin de WordPress/WooCommerce que convierte pedidos en **documentos neutros** 
 
 - Namespace PHP: `Orvita\PrintBridge` · Prefijo: `orp_`
 - Contrato REST congelado: `wp-json/orp-print/v1` (ver `../Doc/04-modelo-de-datos-y-contrato.md`)
-- Estado actual: **F0** — esqueleto, esquema, API REST de trabajos y simulador. El panel completo y `POST /pair` llegan en F1.
+- Estado actual: **F1 completo** — panel (Ajustes/Locales/Plantilla/Vista previa/Cola/Estado), disparo automático, `POST /pair`, Reaper, i18n y auditoría de seguridad. El agente de Windows y el instalador van por su cuenta (F2/F3).
+- Documentos de release: `readme.txt` (WordPress.org), `CHANGELOG.md`, `SECURITY-AUDIT.md`, `RELEASE-CHECKLIST.md`.
 
 ## Arrancar y probar en 5 comandos
 
@@ -58,21 +59,24 @@ orp-print/
 │   │                          # RuleMatcher, LocationRepository
 │   ├── Template/              # TemplateSettings (campos del ticket), DocumentBuilder (bloques 04 §7.2),
 │   │                          # TicketHtml (vista previa imprimible, sin recursos externos)
-│   ├── Admin/                 # menú, Ajustes, Locales, Plantilla, Vista previa, acciones del pedido, avisos
+│   ├── Admin/                 # menú, Ajustes (3 capas), Locales y reglas, Plantilla, Vista previa,
+│   │                          #   Cola (cancelar/reencolar), Estado (diagnóstico F1-10), acciones del pedido, avisos
 │   ├── Cli/SeedCommand.php    # wp orp seed
 │   └── Support/               # Clock (UTC → wp_date), Logger, Settings
 ├── tools/simulator.php        # simulador de agente sin dependencias
-├── tests/                     # PHPUnit: humo de esquema y reclamo atómico
+├── tests/                     # PHPUnit: 13 ficheros (esquema, claim, idempotencia, pair, reaper…)
 └── languages/                 # traducciones (text domain orp-print)
 ```
 
 ## Pruebas PHPUnit
 
-Necesitan la suite de pruebas de WordPress (en F2 va la matriz completa; en F0 hay humo de esquema y reclamo atómico):
+Necesitan la suite de pruebas de WordPress (109 tests / 509 aserciones: esquema, reclamo atómico, idempotencia, cursor, matching de reglas, disparo con dedupe, plantilla, pair, reaper, acciones de cola y saneado de ajustes):
 
 ```bash
 composer install
 WP_TESTS_DIR=/ruta/a/wordpress-tests-lib vendor/bin/phpunit
+# o con wp-env:
+npx @wordpress/env run tests-cli bash tools/_t_phpunit.sh
 ```
 
 ## Notas del contrato

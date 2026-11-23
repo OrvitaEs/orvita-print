@@ -400,8 +400,7 @@ final class PairTest extends \WP_UnitTestCase {
 	}
 
 	/** El upsert de destinos acota copias (99) y descarta salidas incompletas. */
-	public function test_destinations_are_sanitized_like_the_heartbeat(): void {
-		$code = $this->fresh_code();
+	public function test_destinations_are_sanitized_like_the_heartbeat(): void {		$code = $this->fresh_code();
 
 		$response = $this->pair_request(
 			array(
@@ -426,6 +425,47 @@ final class PairTest extends \WP_UnitTestCase {
 		$destinations = DestinationRepository::for_location( $this->location_id );
 		$this->assertCount( 1, $destinations, 'Solo la salida completa se guarda.' );
 		$this->assertSame( 99, (int) $destinations[0]->copies, 'Las copias se acotan a 1-99.' );
+	}
+
+	/**
+	 * F1-13: upsert_many con destinos inválidos — se descartan las que no
+	 * llegan (no array, sin rol o sin impresora), las copias absurdas se
+	 * acotan a 1–99 y el rol se normaliza con sanitize_key (minúsculas y
+	 * guiones). Nada inválido toca la tabla.
+	 */
+	public function test_upsert_many_rejects_invalid_destinations(): void {
+		global $wpdb;
+
+		$agents_before = (int) $wpdb->get_var(
+			$wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->prefix}orp_destinations WHERE location_id = %d", $this->location_id )
+		);
+
+		$result = DestinationRepository::upsert_many(
+			$this->location_id,
+			array(
+				'no-es-array',                                                        // rechazado.
+				array( 'role' => 'sin-impresora' ),                                   // sin printer_name → rechazado.
+				array( 'printer_name' => 'EPSON' ),                                   // sin role → rechazado.
+				array( 'role' => 'Cajon-Rapido', 'printer_name' => 'XPRINTER', 'copies' => -5, 'enabled' => true ), // rol normalizado, copias → 1.
+				array( 'role' => 'ok', 'printer_name' => 'EPSON', 'copies' => 1000 ), // copias → 99.
+			)
+		);
+
+		$this->assertSame( 2, $result['upserted'], 'Solo las dos salidas completas se guardan.' );
+		$this->assertSame( 3, $result['rejected'], 'Las tres inválidas se descartan.' );
+
+		$destinations = DestinationRepository::for_location( $this->location_id );
+		$this->assertCount( $agents_before + 2, $destinations );
+
+		$by_role = array();
+		foreach ( $destinations as $destination ) {
+			$by_role[ (string) $destination->role ] = $destination;
+		}
+
+		$this->assertArrayHasKey( 'cajon-rapido', $by_role, 'El rol se normaliza a minúsculas (sanitize_key).' );
+		$this->assertSame( 1, (int) $by_role['cajon-rapido']->copies, 'Copias negativas acotadas a 1.' );
+		$this->assertSame( 'XPRINTER', (string) $by_role['cajon-rapido']->printer_name, 'El nombre de impresora se conserva tal cual.' );
+		$this->assertSame( 99, (int) $by_role['ok']->copies, 'Copias 1000 acotadas a 99.' );
 	}
 
 	/** Solo el primer emparejamiento consume el código (mark_used atómico). */

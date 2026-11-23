@@ -248,6 +248,35 @@ final class ReaperTest extends \WP_UnitTestCase {
 		$this->assertSame( 'delivered', $this->fetch_job( $job_id )->status );
 	}
 
+	/**
+	 * retention_days = 0 significa «conservar siempre»: el Reaper no borra
+	 * NINGÚN trabajo, aunque tenga 100 días (F1-13). El panel acota a ≥1;
+	 * un 0 solo llega editando la opción directamente, y se respeta.
+	 */
+	public function test_retention_days_zero_deletes_nothing(): void {
+		global $wpdb;
+
+		$original = get_option( \Orvita\PrintBridge\Support\Settings::OPTION, array() );
+
+		$old_created = gmdate( 'Y-m-d H:i:s', time() - 100 * DAY_IN_SECONDS );
+		$old_job     = $this->insert_job( 'delivered', array( 'created_at' => $old_created ) );
+
+		\Orvita\PrintBridge\Support\Settings::save( array( 'retention_days' => 0 ) );
+
+		$summary = Reaper::run();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$this->assertNotSame(
+			0,
+			(int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . $wpdb->prefix . 'orp_jobs WHERE id = %d', $old_job ) ),
+			'Con retention_days = 0 el trabajo viejo NO se borra.'
+		);
+		$this->assertSame( 0, $summary['jobs_deleted'] );
+
+		// Restaurar ajustes.
+		update_option( \Orvita\PrintBridge\Support\Settings::OPTION, $original );
+	}
+
 	/** Retención: jobs de más de 90 días se borran; los recientes se quedan. */
 	public function test_job_retention_deletes_old_rows(): void {
 		$old_created  = gmdate( 'Y-m-d H:i:s', time() - 100 * DAY_IN_SECONDS );

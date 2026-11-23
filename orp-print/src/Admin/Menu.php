@@ -7,8 +7,7 @@
  * panel funciona incluso sin WooCommerce activo (vistas previas, locales).
  *
  * Páginas: Ajustes (3 capas, F1-01), Locales y reglas (F1-02), Plantilla del
- * ticket (F1-03), Vista previa (F1-04) y Estado (diagnóstico; la página
- * completa de diagnóstico es F1-10).
+ * ticket (F1-03), Vista previa (F1-04) y Estado (diagnóstico completo, F1-10).
  */
 
 declare(strict_types=1);

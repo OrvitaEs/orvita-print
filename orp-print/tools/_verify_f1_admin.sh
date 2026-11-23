@@ -137,7 +137,7 @@ if [ "$FOUND" = "1" ]; then ok 'el local válido quedó en la tabla con sus regl
 # --------------------------------------------------- página Estado
 quote 'página Estado'
 curl -sS -b "$JAR" -o /tmp/orp_status.html "$BASE/wp-admin/admin.php?page=orp-status"
-for marker in 'Estado de Orvita Print' 'Trabajos por estado' 'Agentes'; do
+for marker in 'Estado de Orvita Print' 'Cola de impresión' 'Comprobaciones automáticas' 'Agentes'; do
 	if grep -q "$marker" /tmp/orp_status.html; then ok "marca en Estado: $marker"; else bad "falta marca en Estado: $marker"; fi
 done
 

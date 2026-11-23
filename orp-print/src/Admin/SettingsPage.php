@@ -105,7 +105,42 @@ final class SettingsPage {
 	/** Sanea y guarda la capa de instancia. */
 	private static function save_instance( array $input ): void {
 		$previous = Settings::all();
-		$clean    = array();
+
+		$clean = self::sanitize_instance( $input );
+
+		Settings::save( $clean );
+
+		$location_id = (int) $clean['default_location_id'];
+
+		if ( $location_id > 0 && (int) $previous['default_location_id'] !== $location_id ) {
+			LocationRepository::make_sole_default( $location_id );
+		}
+
+		// «Ninguno» (0): sincronía bidireccional completa (hallazgo del tester
+		// 2026-11-23) — limpia también el is_default huérfano que quedara en la
+		// tabla; el resolver lo seguía usando aunque la opción fuera 0.
+		if ( 0 === $location_id ) {
+			LocationRepository::clear_default();
+		}
+
+		add_settings_error(
+			'orp-settings',
+			'orp_settings_saved',
+			__( 'Ajustes guardados.', 'orp-print' ),
+			'updated'
+		);
+	}
+
+	/**
+	 * Sanea el formulario de instancia sin guardar nada. Público para las
+	 * pruebas (F1-13): valores fuera de rango vuelven al límite o al valor
+	 * por defecto (poll_interval 0 → 10, paper_width_mm 999 → 80…).
+	 *
+	 * @param array<string, mixed> $input Entrada cruda del formulario.
+	 * @return array<string, mixed> Valores saneados listos para Settings::save().
+	 */
+	public static function sanitize_instance( array $input ): array {
+		$clean = array();
 
 		// Disparadores: «created» + estados de pedido elegidos.
 		$states = array( 'created' );
@@ -147,25 +182,7 @@ final class SettingsPage {
 		}
 		$clean['default_location_id'] = $location_id;
 
-		Settings::save( $clean );
-
-		if ( $location_id > 0 && (int) $previous['default_location_id'] !== $location_id ) {
-			LocationRepository::make_sole_default( $location_id );
-		}
-
-		// «Ninguno» (0): sincronía bidireccional completa (hallazgo del tester
-		// 2026-11-23) — limpia también el is_default huérfano que quedara en la
-		// tabla; el resolver lo seguía usando aunque la opción fuera 0.
-		if ( 0 === $location_id ) {
-			LocationRepository::clear_default();
-		}
-
-		add_settings_error(
-			'orp-settings',
-			'orp_settings_saved',
-			__( 'Ajustes guardados.', 'orp-print' ),
-			'updated'
-		);
+		return $clean;
 	}
 
 	/** Entero acotado con valor de respaldo. */

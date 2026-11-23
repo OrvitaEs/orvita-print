@@ -220,16 +220,22 @@ final class Reaper {
 		// 5. Retención de orp_jobs (Doc/04 §2.7: retention_days, 90 por
 		//    defecto). Se limpian TODOS los estados: un trabajo con más de
 		//    90 días no aporta (ni pending, que ya estaría caducado).
-		$retention_days = max( 1, (int) Settings::get( 'retention_days', 90 ) );
-		$jobs_edge      = gmdate( 'Y-m-d H:i:s', time() - ( $retention_days * DAY_IN_SECONDS ) );
+		//    retention_days = 0 significa «conservar siempre»: no se borra
+		//    nada (el panel acota a ≥1; solo editando la opción directamente
+		//    se puede poner 0, y la limpieza respeta esa decisión).
+		$retention_days = (int) Settings::get( 'retention_days', 90 );
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Retención.
-		$summary['jobs_deleted'] = (int) $wpdb->query(
-			$wpdb->prepare(
-				"DELETE FROM {$jobs_table} WHERE created_at < %s",
-				$jobs_edge
-			)
-		);
+		if ( $retention_days > 0 ) {
+			$jobs_edge = gmdate( 'Y-m-d H:i:s', time() - ( $retention_days * DAY_IN_SECONDS ) );
+
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Retención.
+			$summary['jobs_deleted'] = (int) $wpdb->query(
+				$wpdb->prepare(
+					"DELETE FROM {$jobs_table} WHERE created_at < %s",
+					$jobs_edge
+				)
+			);
+		}
 
 		// 6. Retención de orp_logs: 30 días (Doc/04 §2.6). Sin datos personales.
 		$logs_edge = gmdate( 'Y-m-d H:i:s', time() - ( self::LOG_RETENTION_DAYS * DAY_IN_SECONDS ) );

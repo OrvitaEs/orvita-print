@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-22T23:58:22+00:00\n"
+"POT-Creation-Date: 2026-11-23T16:28:59+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: orp-print\n"
@@ -36,225 +36,540 @@ msgstr ""
 msgid "Orvita"
 msgstr ""
 
-#. translators: %s: nombre del local guardado.
-#: src/Admin/LocationsPage.php:100
+#. translators: %d: id del trabajo.
+#: src/Admin/JobsPage.php:84
 #, php-format
-msgid "Local «%s» guardado. Los trabajos ya encolados conservan su local: cambiar reglas no los altera."
+msgid "Trabajo #%d cancelado: no se imprimirá."
 msgstr ""
 
-#: src/Admin/LocationsPage.php:112
-msgid "El local no existe o ya fue borrado."
-msgstr ""
-
-#. translators: %s: nombre del local borrado.
-#: src/Admin/LocationsPage.php:121
+#. translators: %d: id del trabajo.
+#: src/Admin/JobsPage.php:95
 #, php-format
-msgid "Local «%s» borrado junto con sus salidas y agentes."
+msgid "El trabajo #%d no se pudo cancelar (solo pending o claimed; lo ya impreso no se desimprime)."
 msgstr ""
 
-#: src/Admin/LocationsPage.php:154
-msgid "Local activado."
+#. translators: %d: id del trabajo.
+#: src/Admin/JobsPage.php:112
+#, php-format
+msgid "Trabajo #%d reencolado: vuelve a pending con los intentos a cero y caducidad nueva. Es la MISMA fila: no se duplica nada."
 msgstr ""
 
-#: src/Admin/LocationsPage.php:154
-msgid "Local desactivado: no recibe pedidos hasta que lo reactives."
+#. translators: %d: id del trabajo.
+#: src/Admin/JobsPage.php:123
+#, php-format
+msgid "El trabajo #%d no se puede reencolar (solo failed o expired)."
 msgstr ""
 
-#: src/Admin/LocationsPage.php:168
-msgid "Local por defecto actualizado. Es el destino de los pedidos que no coinciden con ninguna regla, con aviso en el panel."
-msgstr ""
-
-#: src/Admin/LocationsPage.php:177
-msgid "Faltan el código o el nombre del local."
-msgstr ""
-
-#: src/Admin/LocationsPage.php:179
-msgid "El código solo puede llevar minúsculas, números, guiones y guiones bajos."
-msgstr ""
-
-#: src/Admin/LocationsPage.php:181
-msgid "Ya existe un local con ese código: debe ser único."
-msgstr ""
-
-#: src/Admin/LocationsPage.php:183
-msgid "El JSON de reglas no es válido: revísalo y vuelve a guardar."
-msgstr ""
-
-#: src/Admin/LocationsPage.php:185
-msgid "Demasiadas reglas en el local (máximo 20)."
-msgstr ""
-
-#: src/Admin/LocationsPage.php:187
-msgid "Hay una regla con tipo, operador o valores no admitidos."
-msgstr ""
-
-#: src/Admin/LocationsPage.php:189
-msgid "No se pudo guardar el local."
-msgstr ""
-
-#: src/Admin/LocationsPage.php:197
-msgid "Sin reglas (solo local por defecto)"
-msgstr ""
-
-#: src/Admin/LocationsPage.php:201
-msgid "ciudad"
-msgstr ""
-
-#: src/Admin/LocationsPage.php:202
-msgid "código postal"
-msgstr ""
-
-#: src/Admin/LocationsPage.php:203
-msgid "método de envío"
-msgstr ""
-
-#: src/Admin/LocationsPage.php:204
-msgid "categoría"
-msgstr ""
-
-#: src/Admin/LocationsPage.php:205
-msgid "meta del pedido"
-msgstr ""
-
-#: src/Admin/LocationsPage.php:222
+#: src/Admin/JobsPage.php:203
+#: src/Admin/LocationsPage.php:272
 #: src/Admin/PreviewPage.php:57
-#: src/Admin/SettingsPage.php:177
-#: src/Admin/StatusPage.php:24
+#: src/Admin/SettingsPage.php:201
+#: src/Admin/StatusPage.php:40
 #: src/Admin/TemplatePage.php:71
 msgid "No tienes permisos para ver esta página."
 msgstr ""
 
-#: src/Admin/LocationsPage.php:247
-#: src/Admin/Menu.php:59
-#: src/Admin/Menu.php:60
-msgid "Locales y reglas"
+#: src/Admin/JobsPage.php:213
+#: src/Admin/StatusPage.php:392
+msgid "Cola de impresión"
 msgstr ""
 
-#: src/Admin/LocationsPage.php:251
-msgid "Los locales activos se evalúan por prioridad ascendente y gana el primero cuyas reglas se cumplen; si ninguno coincide, el pedido va al local por defecto con un aviso. Las reglas se leen al crear el trabajo: cambiarlas no altera los trabajos ya encolados."
+#: src/Admin/JobsPage.php:217
+msgid "Un trabajo por pedido y salida: cada fila es un documento para una impresora. Los pending con la caducidad pasada ya no se sirven al agente; el Reaper los marca expired."
 msgstr ""
 
-#: src/Admin/LocationsPage.php:254
-msgid "Editar local"
+#: src/Admin/JobsPage.php:272
+msgid "Agentes por local"
 msgstr ""
 
-#: src/Admin/LocationsPage.php:254
-#: src/Admin/LocationsPage.php:310
-msgid "Añadir local"
+#: src/Admin/JobsPage.php:276
+#: src/Admin/JobsPage.php:438
+#: src/Admin/JobsPage.php:530
+#: src/Admin/LocationsPage.php:527
+#: src/Admin/StatusPage.php:238
+#: src/Admin/StatusPage.php:291
+msgid "Local"
 msgstr ""
 
-#: src/Admin/LocationsPage.php:261
-msgid "Código (canónico)"
+#: src/Admin/JobsPage.php:277
+msgid "Agente"
 msgstr ""
 
-#: src/Admin/LocationsPage.php:264
-msgid "Minúsculas, números, guiones y guiones bajos. Único. Es el código que puede usar una regla order_meta del checkout."
+#: src/Admin/JobsPage.php:278
+#: src/Admin/StatusPage.php:292
+msgid "Conexión"
 msgstr ""
 
-#: src/Admin/LocationsPage.php:268
-#: src/Admin/LocationsPage.php:322
-#: src/Admin/StatusPage.php:101
-msgid "Nombre"
+#: src/Admin/JobsPage.php:279
+#: src/Admin/StatusPage.php:293
+msgid "Versión"
 msgstr ""
 
-#: src/Admin/LocationsPage.php:272
-#: src/Admin/LocationsPage.php:324
-msgid "Prioridad"
+#: src/Admin/JobsPage.php:280
+msgid "Salidas reportadas"
 msgstr ""
 
-#: src/Admin/LocationsPage.php:275
-msgid "Menor número = se evalúa antes."
+#. translators: %d: id de local.
+#: src/Admin/JobsPage.php:298
+#: src/Admin/JobsPage.php:558
+#: src/Admin/LocationsPage.php:550
+#: src/Admin/StatusPage.php:315
+#, php-format
+msgid "Local #%d (borrado)"
 msgstr ""
 
-#: src/Admin/LocationsPage.php:279
-#: src/Admin/LocationsPage.php:326
-#: src/Admin/Menu.php:80
-#: src/Admin/Menu.php:81
-#: src/Admin/StatusPage.php:79
-#: src/Admin/StatusPage.php:102
+#: src/Admin/JobsPage.php:302
+#: src/Admin/StatusPage.php:321
+msgid "revocado"
+msgstr ""
+
+#: src/Admin/JobsPage.php:304
+#: src/Admin/StatusPage.php:323
+msgid "conectado"
+msgstr ""
+
+#: src/Admin/JobsPage.php:306
+#: src/Admin/StatusPage.php:325
+msgid "desconectado"
+msgstr ""
+
+#: src/Admin/JobsPage.php:309
+#: src/Admin/StatusPage.php:328
+msgid "sin latido nunca"
+msgstr ""
+
+#: src/Admin/JobsPage.php:315
+#: src/Admin/StatusPage.php:343
+msgid "ninguna todavía"
+msgstr ""
+
+#. translators: 1: etiqueta, 2: impresora, 3: copias.
+#: src/Admin/JobsPage.php:324
+#, php-format
+msgid "%1$s · %2$s ×%3$d"
+msgstr ""
+
+#: src/Admin/JobsPage.php:332
+msgid "sin confirmar"
+msgstr ""
+
+#: src/Admin/JobsPage.php:335
+#: src/Admin/StatusPage.php:359
+msgid "desactivada"
+msgstr ""
+
+#: src/Admin/JobsPage.php:374
+msgid "El trabajo solicitado no existe."
+msgstr ""
+
+#. translators: %d: id del trabajo.
+#: src/Admin/JobsPage.php:386
+#, php-format
+msgid "Documento del trabajo #%d"
+msgstr ""
+
+#: src/Admin/JobsPage.php:392
+msgid "← Volver a la cola"
+msgstr ""
+
+#: src/Admin/JobsPage.php:396
+#: src/Admin/JobsPage.php:429
+#: src/Admin/JobsPage.php:533
+#: src/Admin/LocationsPage.php:329
+#: src/Admin/LocationsPage.php:376
+#: src/Admin/LocationsPage.php:532
+#: src/Admin/Menu.php:89
+#: src/Admin/Menu.php:90
+#: src/Admin/StatusPage.php:241
 msgid "Estado"
 msgstr ""
 
-#: src/Admin/LocationsPage.php:283
-msgid "Local activo"
+#: src/Admin/JobsPage.php:397
+#: src/Admin/JobsPage.php:529
+#: src/Template/DocumentBuilder.php:152
+msgid "Pedido"
 msgstr ""
 
-#: src/Admin/LocationsPage.php:288
-#: src/Admin/SettingsPage.php:291
-msgid "Local por defecto"
+#: src/Admin/JobsPage.php:398
+#: src/Admin/JobsPage.php:531
+msgid "Salida"
 msgstr ""
 
-#: src/Admin/LocationsPage.php:292
-msgid "Marcar como local por defecto (solo puede haber uno)"
+#. translators: %d: copias.
+#: src/Admin/JobsPage.php:398
+#, php-format
+msgid "%d copias (congeladas al crear)"
 msgstr ""
 
-#: src/Admin/LocationsPage.php:297
-msgid "Reglas (JSON)"
+#. translators: %d: copias.
+#: src/Admin/JobsPage.php:399
+#: src/Admin/JobsPage.php:534
+msgid "Intentos"
 msgstr ""
 
-#: src/Admin/LocationsPage.php:301
-msgid "Array JSON. Tipos: city, postcode, shipping_method, product_category, order_meta. Operadores: in, equals, contains, prefix, exists. Todas las reglas del local deben cumplirse. En order_meta, values[0] es la clave del metadato. Ejemplo:"
+#: src/Admin/JobsPage.php:400
+#: src/Admin/JobsPage.php:538
+msgid "Último error"
 msgstr ""
 
-#: src/Admin/LocationsPage.php:310
-msgid "Guardar local"
+#: src/Admin/JobsPage.php:400
+msgid "—"
 msgstr ""
 
-#: src/Admin/LocationsPage.php:312
-msgid "Cancelar edición y crear uno nuevo"
+#: src/Admin/JobsPage.php:401
+#: src/Admin/JobsPage.php:535
+msgid "Creado"
 msgstr ""
 
-#: src/Admin/LocationsPage.php:318
-msgid "Locales existentes"
+#: src/Admin/JobsPage.php:402
+#: src/Admin/JobsPage.php:536
+msgid "Caduca"
 msgstr ""
 
-#: src/Admin/LocationsPage.php:323
-msgid "Código"
+#: src/Admin/JobsPage.php:403
+#: src/Admin/JobsPage.php:537
+msgid "Entregado"
 msgstr ""
 
-#: src/Admin/LocationsPage.php:325
-msgid "Reglas"
+#: src/Admin/JobsPage.php:403
+msgid "no"
 msgstr ""
 
-#: src/Admin/LocationsPage.php:327
+#: src/Admin/JobsPage.php:406
+msgid "Documento neutro (payload, versión 1)"
+msgstr ""
+
+#: src/Admin/JobsPage.php:431
+#: src/Admin/JobsPage.php:440
+msgid "Todos"
+msgstr ""
+
+#: src/Admin/JobsPage.php:447
+msgid "Fecha (creado)"
+msgstr ""
+
+#: src/Admin/JobsPage.php:451
+msgid "Por página"
+msgstr ""
+
+#: src/Admin/JobsPage.php:454
+msgid "Filtrar"
+msgstr ""
+
+#: src/Admin/JobsPage.php:455
+msgid "Limpiar"
+msgstr ""
+
+#: src/Admin/JobsPage.php:528
+msgid "Id"
+msgstr ""
+
+#: src/Admin/JobsPage.php:532
+#: src/Admin/LocationsPage.php:531
+msgid "Copias"
+msgstr ""
+
+#: src/Admin/JobsPage.php:539
+#: src/Admin/LocationsPage.php:378
 msgid "Acciones"
 msgstr ""
 
-#: src/Admin/LocationsPage.php:332
-msgid "Sin locales todavía. Crea el primero arriba."
+#: src/Admin/JobsPage.php:544
+msgid "Sin trabajos con estos filtros."
 msgstr ""
 
-#: src/Admin/LocationsPage.php:337
-msgid "Desactivar"
+#: src/Admin/JobsPage.php:568
+msgid "Ver documento"
 msgstr ""
 
-#: src/Admin/LocationsPage.php:337
-msgid "Activar"
+#: src/Admin/JobsPage.php:570
+msgid "Cancelar"
 msgstr ""
 
-#: src/Admin/LocationsPage.php:343
-#: src/Admin/LocationsPage.php:353
-msgid "Por defecto"
+#: src/Admin/JobsPage.php:573
+msgid "Reencolar"
 msgstr ""
 
-#: src/Admin/LocationsPage.php:349
-msgid "Activo"
+#: src/Admin/LocationsPage.php:85
+msgid "El local no existe: no se generó el código."
 msgstr ""
 
-#: src/Admin/LocationsPage.php:349
-msgid "Inactivo"
+#: src/Admin/LocationsPage.php:93
+msgid "No se pudo generar el código de emparejamiento. Vuelve a intentarlo."
+msgstr ""
+
+#. translators: 1: nombre del local, 2: código de 6 dígitos, 3: hora de caducidad local.
+#: src/Admin/LocationsPage.php:105
+#, php-format
+msgid "Código de emparejamiento para «%1$s»: %2$s (caduca a las %3$s). Solo vale para este local y un solo agente; el agente lo teclea con orvitaprint pair --server <URL> %2$s."
+msgstr ""
+
+#. translators: %s: nombre del local guardado.
+#: src/Admin/LocationsPage.php:147
+#, php-format
+msgid "Local «%s» guardado. Los trabajos ya encolados conservan su local: cambiar reglas no los altera."
+msgstr ""
+
+#: src/Admin/LocationsPage.php:159
+msgid "El local no existe o ya fue borrado."
+msgstr ""
+
+#. translators: %s: nombre del local borrado.
+#: src/Admin/LocationsPage.php:168
+#, php-format
+msgid "Local «%s» borrado junto con sus salidas y agentes."
+msgstr ""
+
+#: src/Admin/LocationsPage.php:201
+msgid "Local activado."
+msgstr ""
+
+#: src/Admin/LocationsPage.php:201
+msgid "Local desactivado: no recibe pedidos hasta que lo reactives."
+msgstr ""
+
+#: src/Admin/LocationsPage.php:215
+msgid "Local por defecto actualizado. Es el destino de los pedidos que no coinciden con ninguna regla, con aviso en el panel."
+msgstr ""
+
+#: src/Admin/LocationsPage.php:224
+msgid "Faltan el código o el nombre del local."
+msgstr ""
+
+#: src/Admin/LocationsPage.php:226
+msgid "El código solo puede llevar minúsculas, números, guiones y guiones bajos."
+msgstr ""
+
+#: src/Admin/LocationsPage.php:228
+msgid "Ya existe un local con ese código: debe ser único."
+msgstr ""
+
+#: src/Admin/LocationsPage.php:230
+msgid "El JSON de reglas no es válido: revísalo y vuelve a guardar."
+msgstr ""
+
+#: src/Admin/LocationsPage.php:232
+msgid "Demasiadas reglas en el local (máximo 20)."
+msgstr ""
+
+#: src/Admin/LocationsPage.php:234
+msgid "Hay una regla con tipo, operador o valores no admitidos."
+msgstr ""
+
+#: src/Admin/LocationsPage.php:236
+msgid "No se pudo guardar el local."
+msgstr ""
+
+#: src/Admin/LocationsPage.php:247
+msgid "Sin reglas (solo local por defecto)"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:251
+msgid "ciudad"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:252
+msgid "código postal"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:253
+msgid "método de envío"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:254
+msgid "categoría"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:255
+msgid "meta del pedido"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:297
+#: src/Admin/Menu.php:68
+#: src/Admin/Menu.php:69
+msgid "Locales y reglas"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:301
+msgid "Los locales activos se evalúan por prioridad ascendente y gana el primero cuyas reglas se cumplen; si ninguno coincide, el pedido va al local por defecto con un aviso. Las reglas se leen al crear el trabajo: cambiarlas no altera los trabajos ya encolados."
+msgstr ""
+
+#: src/Admin/LocationsPage.php:304
+msgid "Editar local"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:304
+#: src/Admin/LocationsPage.php:360
+msgid "Añadir local"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:311
+msgid "Código (canónico)"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:314
+msgid "Minúsculas, números, guiones y guiones bajos. Único. Es el código que puede usar una regla order_meta del checkout."
+msgstr ""
+
+#: src/Admin/LocationsPage.php:318
+#: src/Admin/LocationsPage.php:372
+#: src/Admin/StatusPage.php:290
+msgid "Nombre"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:322
+#: src/Admin/LocationsPage.php:374
+#: src/Admin/StatusPage.php:240
+msgid "Prioridad"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:325
+msgid "Menor número = se evalúa antes."
+msgstr ""
+
+#: src/Admin/LocationsPage.php:333
+msgid "Local activo"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:338
+#: src/Admin/SettingsPage.php:315
+msgid "Local por defecto"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:342
+msgid "Marcar como local por defecto (solo puede haber uno)"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:347
+msgid "Reglas (JSON)"
 msgstr ""
 
 #: src/Admin/LocationsPage.php:351
+msgid "Array JSON. Tipos: city, postcode, shipping_method, product_category, order_meta. Operadores: in, equals, contains, prefix, exists. Todas las reglas del local deben cumplirse. En order_meta, values[0] es la clave del metadato. Ejemplo:"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:360
+msgid "Guardar local"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:362
+msgid "Cancelar edición y crear uno nuevo"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:368
+msgid "Locales existentes"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:373
+#: src/Admin/StatusPage.php:239
+msgid "Código"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:375
+#: src/Admin/StatusPage.php:242
+msgid "Reglas"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:377
+msgid "Emparejamiento"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:383
+msgid "Sin locales todavía. Crea el primero arriba."
+msgstr ""
+
+#: src/Admin/LocationsPage.php:388
+msgid "Desactivar"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:388
+msgid "Activar"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:394
+#: src/Admin/LocationsPage.php:421
+#: src/Admin/StatusPage.php:254
+msgid "Por defecto"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:400
+#: src/Admin/StatusPage.php:259
+msgid "Activo"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:400
+#: src/Admin/StatusPage.php:259
+msgid "Inactivo"
+msgstr ""
+
+#. translators: %s: hora de caducidad local.
+#: src/Admin/LocationsPage.php:409
+#, php-format
+msgid "vigente hasta las %s"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:413
+msgid "sin código vigente"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:416
+msgid "Generar código"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:419
 msgid "Editar"
 msgstr ""
 
-#: src/Admin/LocationsPage.php:355
+#: src/Admin/LocationsPage.php:423
 msgid "¿Borrar este local junto con sus salidas y agentes?"
 msgstr ""
 
-#: src/Admin/LocationsPage.php:355
+#: src/Admin/LocationsPage.php:423
 msgid "Borrar"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:488
+msgid "Salidas (destinos) por local"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:490
+msgid "Vista de solo lectura: cada salida la reporta el agente del TPV en su heartbeat (impresora, copias y estado). Cada pedido genera un trabajo por salida activa del local, con copias congeladas al crearlo. Para cambiarlas actúa desde el agente."
+msgstr ""
+
+#. translators: 1: nombre del local, 2: nombre de la impresora.
+#: src/Admin/LocationsPage.php:500
+#, php-format
+msgid "Aviso: dos salidas activas del local «%1$s» apuntan a la misma impresora («%2$s»). Para varias copias usa la salida con su número de copias, no salidas repetidas."
+msgstr ""
+
+#. translators: %s: lista de nombres de local.
+#: src/Admin/LocationsPage.php:516
+#, php-format
+msgid "Los locales %1$s no tienen ninguna salida activa: no se crearán trabajos para sus pedidos hasta que el agente reporte una salida."
+msgstr ""
+
+#: src/Admin/LocationsPage.php:528
+msgid "Rol"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:529
+msgid "Etiqueta"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:530
+msgid "Impresora"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:537
+msgid "Sin salidas todavía: el agente del TPV las registra al emparejarse y en cada heartbeat."
+msgstr ""
+
+#: src/Admin/LocationsPage.php:557
+msgid "Activa"
+msgstr ""
+
+#: src/Admin/LocationsPage.php:557
+msgid "Desactivada"
 msgstr ""
 
 #: src/Admin/Menu.php:50
@@ -262,65 +577,99 @@ msgstr ""
 msgid "Ajustes"
 msgstr ""
 
-#: src/Admin/Menu.php:68
-#: src/Admin/Menu.php:69
+#: src/Admin/Menu.php:59
+#: src/Admin/Menu.php:60
+msgid "Cola"
+msgstr ""
+
+#: src/Admin/Menu.php:77
+#: src/Admin/Menu.php:78
 #: src/Admin/TemplatePage.php:79
 msgid "Plantilla del ticket"
 msgstr ""
 
 #: src/Admin/Notices.php:38
-#: src/Admin/Notices.php:54
+#: src/Admin/Notices.php:51
+#: src/Admin/Notices.php:71
+#: src/Admin/Notices.php:91
+#: src/Admin/Notices.php:120
 msgid "Orvita Print:"
 msgstr ""
 
 #. translators: 1: lista de ids de pedido, 2: código del local por defecto.
-#: src/Admin/Notices.php:58
+#: src/Admin/Notices.php:55
 #, php-format
 msgid "los pedidos %1$s no coinciden con ninguna regla de local y han ido al local por defecto (%2$s). Revisa las reglas de la pestaña «Locales y reglas» si este no es el comportamiento esperado."
 msgstr ""
 
-#: src/Admin/OrderActions.php:65
+#. translators: %s: lista de ids de pedido.
+#: src/Admin/Notices.php:75
+#, php-format
+msgid "los pedidos %s NO se han encolado: no hay local por defecto configurado y ninguna regla coincidía. Configura un local por defecto en Ajustes o revisa las reglas; mientras tanto esos pedidos no generan papel."
+msgstr ""
+
+#. translators: 1: nombre del agente, 2: nombre del local.
+#: src/Admin/Notices.php:97
+#, php-format
+msgid "«%1$s» (local %2$s)"
+msgstr ""
+
+#. translators: %s: lista de agentes.
+#: src/Admin/Notices.php:104
+#, php-format
+msgid "agentes sin heartbeat desde hace más de 3 minutos: %s. Si el TPV está apagado o sin red, los trabajos esperan en la cola y caducan según su configuración."
+msgstr ""
+
+#. translators: %d: número de trabajos caducados.
+#: src/Admin/Notices.php:125
+#, php-format
+msgid "%d trabajo ha caducado sin imprimirse. Ábrelo en la Cola y reencólalo si lo necesitas."
+msgid_plural "%d trabajos han caducado sin imprimirse. Ábrelos en la Cola y reencólalos si los necesitas."
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/Admin/OrderActions.php:64
 msgid "Ver ticket"
 msgstr ""
 
-#: src/Admin/OrderActions.php:81
+#: src/Admin/OrderActions.php:80
 msgid "Ver ticket (Orvita Print)"
 msgstr ""
 
-#: src/Admin/OrderActions.php:82
+#: src/Admin/OrderActions.php:81
 msgid "Reimprimir ticket (Orvita Print)"
 msgstr ""
 
 #. translators: %d: id de pedido.
-#: src/Admin/OrderActions.php:121
+#: src/Admin/OrderActions.php:120
 #, php-format
 msgid "Reimpresión del pedido #%d cancelada: el pedido no tiene local asignable (revisa Locales y reglas o el local por defecto)."
 msgstr ""
 
 #. translators: %1$d: id de pedido, %2$s: nombre del local.
-#: src/Admin/OrderActions.php:144
+#: src/Admin/OrderActions.php:143
 #, php-format
 msgid "El local «%2$s» no tiene salidas activas: no se creó ningún trabajo para el pedido #%1$d. Usa la vista previa e imprime desde el navegador."
 msgstr ""
 
-#: src/Admin/OrderActions.php:182
+#: src/Admin/OrderActions.php:166
 msgid "ninguno nuevo (idempotencia)"
 msgstr ""
 
 #. translators: 1: lista de ids de trabajo, 2: nombre del local.
-#: src/Admin/OrderActions.php:186
+#: src/Admin/OrderActions.php:170
 #, php-format
 msgid "Orvita Print: reimpresión manual → trabajos #%1$s (local %2$s)."
 msgstr ""
 
 #. translators: 1: id de pedido, 2: lista de trabajos.
-#: src/Admin/OrderActions.php:210
+#: src/Admin/OrderActions.php:194
 #, php-format
 msgid "Reimpresión del pedido #%1$d encolada: trabajos %2$s."
 msgstr ""
 
 #. translators: %d: id de pedido.
-#: src/Admin/OrderActions.php:216
+#: src/Admin/OrderActions.php:200
 #, php-format
 msgid "La reimpresión del pedido #%d no creó trabajos nuevos (ya existían)."
 msgstr ""
@@ -360,225 +709,418 @@ msgstr ""
 msgid "Preset «%s» aplicado. Ajusta ahora los valores de instancia si lo necesitas."
 msgstr ""
 
-#: src/Admin/SettingsPage.php:159
+#: src/Admin/SettingsPage.php:129
 msgid "Ajustes guardados."
 msgstr ""
 
-#: src/Admin/SettingsPage.php:188
+#: src/Admin/SettingsPage.php:212
 msgid "Ajustes de Orvita Print"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:191
+#: src/Admin/SettingsPage.php:215
 msgid "Capa 1 · Producto"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:193
+#: src/Admin/SettingsPage.php:217
 msgid "Capacidades de esta versión (fijas, no editables): un documento por pedido, de 1 a n salidas por local, disparo al crear el pedido o por estado, deduplicación por pedido o por disparo y plantilla por campos seleccionables (pestaña «Plantilla del ticket»)."
 msgstr ""
 
-#: src/Admin/SettingsPage.php:198
+#: src/Admin/SettingsPage.php:222
 msgid "Capa 2 · Preset"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:200
+#: src/Admin/SettingsPage.php:224
 msgid "Un preset es una combinación típica de ajustes, no un modo del código: al aplicarlo se escriben sus valores en la capa de instancia y luego puedes afinarlos."
 msgstr ""
 
-#: src/Admin/SettingsPage.php:207
+#: src/Admin/SettingsPage.php:231
+#: src/Admin/StatusPage.php:203
 msgid "Preset activo"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:217
+#: src/Admin/SettingsPage.php:241
 msgid "Instalación nueva: «Aviso». La parte de plantilla del preset marca los campos del ticket; las salidas de cada preset se aplican en la fase F1-06."
 msgstr ""
 
-#: src/Admin/SettingsPage.php:224
+#: src/Admin/SettingsPage.php:248
 msgid "Aplicar preset"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:230
+#: src/Admin/SettingsPage.php:254
 msgid "Capa 3 · Instancia"
 msgstr ""
 
 #. translators: %d: versión actual de configuración del agente.
-#: src/Admin/SettingsPage.php:235
+#: src/Admin/SettingsPage.php:259
 #, php-format
 msgid "Valores concretos de esta instalación. Versión de configuración visible por los agentes: %d (sube automáticamente al cambiar ajustes que les afectan)."
 msgstr ""
 
-#: src/Admin/SettingsPage.php:244
+#: src/Admin/SettingsPage.php:268
 msgid "Disparo y deduplicación"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:247
+#: src/Admin/SettingsPage.php:271
 msgid "Disparadores"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:252
+#: src/Admin/SettingsPage.php:276
 msgid "Creación del pedido (siempre activo: el piloto nace en on-hold con COD y el disparador correcto es la creación)"
 msgstr ""
 
 #. translators: %s: nombre del estado de pedido.
-#: src/Admin/SettingsPage.php:266
+#: src/Admin/SettingsPage.php:290
 #, php-format
 msgid "Pasar al estado «%s»"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:277
+#: src/Admin/SettingsPage.php:301
 msgid "Deduplicación"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:281
+#: src/Admin/SettingsPage.php:305
 msgid "Un solo aviso por pedido (dedupe_scope: order)"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:286
+#: src/Admin/SettingsPage.php:310
 msgid "Un trabajo por cada disparo (dedupe_scope: trigger)"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:294
+#: src/Admin/SettingsPage.php:318
 msgid "— Ninguno (los pedidos sin regla no se encolan; se registran en el log) —"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:302
+#: src/Admin/SettingsPage.php:326
 msgid "Red de seguridad: si ninguna regla coincide, el pedido va aquí y se muestra un aviso en el panel. También se marca como «por defecto» en Locales."
 msgstr ""
 
-#: src/Admin/SettingsPage.php:308
+#: src/Admin/SettingsPage.php:332
 msgid "Documento y agente"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:311
+#: src/Admin/SettingsPage.php:335
 msgid "Ancho de papel"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:314
+#: src/Admin/SettingsPage.php:338
 msgid "80 mm"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:315
+#: src/Admin/SettingsPage.php:339
 msgid "58 mm"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:320
+#: src/Admin/SettingsPage.php:344
 msgid "Codificación"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:330
+#: src/Admin/SettingsPage.php:354
 msgid "Modo de corte"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:333
+#: src/Admin/SettingsPage.php:357
 msgid "Corte parcial"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:334
+#: src/Admin/SettingsPage.php:358
 msgid "Corte completo"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:339
+#: src/Admin/SettingsPage.php:363
 msgid "Cajón"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:343
+#: src/Admin/SettingsPage.php:367
 msgid "Abrir el cajón al imprimir"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:348
+#: src/Admin/SettingsPage.php:372
 msgid "Intervalo de poll"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:351
+#: src/Admin/SettingsPage.php:375
 msgid "segundos (10 s ± 20 % de jitter en el agente)"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:355
+#: src/Admin/SettingsPage.php:379
 msgid "Aviso sonoro"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:359
+#: src/Admin/SettingsPage.php:383
 msgid "Sonar al haber trabajo pendiente en el agente"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:365
+#: src/Admin/SettingsPage.php:389
 msgid "Cola y retención"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:368
+#: src/Admin/SettingsPage.php:392
 msgid "Caducidad de trabajos"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:371
+#: src/Admin/SettingsPage.php:395
 msgid "minutos; el agente no reclama un trabajo caducado (410)"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:375
+#: src/Admin/SettingsPage.php:399
 msgid "Retención"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:378
+#: src/Admin/SettingsPage.php:402
 msgid "días conservando los trabajos entregados"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:385
+#: src/Admin/SettingsPage.php:409
 msgid "Guardar ajustes"
 msgstr ""
 
-#: src/Admin/StatusPage.php:47
+#: src/Admin/StatusPage.php:46
 msgid "Estado de Orvita Print"
 msgstr ""
 
 #: src/Admin/StatusPage.php:48
-msgid "Diagnóstico básico de la cola y los agentes. La página completa de diagnóstico llega en F1-10."
+msgid "Diagnóstico del plugin para soporte: comprobaciones automáticas, versiones, locales, agentes, cola y últimos eventos. No se muestra ningún dato personal."
 msgstr ""
 
-#: src/Admin/StatusPage.php:50
-msgid "Versiones"
+#: src/Admin/StatusPage.php:79
+msgid "WooCommerce activo"
 msgstr ""
 
-#. translators: 1: versión del plugin, 2: versión del esquema, 3: versión de configuración, 4: versión de plantilla
-#: src/Admin/StatusPage.php:55
+#. translators: %s: versión de WooCommerce.
+#: src/Admin/StatusPage.php:82
 #, php-format
-msgid "Plugin %1$s · Esquema %2$s · Config %3$s · Plantilla %4$s"
+msgid "versión %s"
 msgstr ""
 
-#. translators: 1: ancho de papel en mm, 2: codificación, 3: minutos de caducidad
-#: src/Admin/StatusPage.php:67
+#. translators: %s: versión de WooCommerce.
+#: src/Admin/StatusPage.php:83
+msgid "no detectado: sin WooCommerce no hay pedidos que imprimir"
+msgstr ""
+
+#: src/Admin/StatusPage.php:92
+msgid "HPOS (tablas de pedido propias)"
+msgstr ""
+
+#: src/Admin/StatusPage.php:95
+msgid "activo: los pedidos se leen por la API CRUD (compatible)"
+msgstr ""
+
+#: src/Admin/StatusPage.php:96
+msgid "desactivado: el plugin es compatible con las dos configuraciones"
+msgstr ""
+
+#: src/Admin/StatusPage.php:102
+msgid "Cron de limpieza (Reaper)"
+msgstr ""
+
+#. translators: %s: fecha y hora local de la próxima ejecución.
+#: src/Admin/StatusPage.php:107
 #, php-format
-msgid "Papel %1$s mm · Codificación %2$s · Caducidad de trabajo %3$s min"
+msgid "programado; próxima ejecución: %s"
 msgstr ""
 
-#: src/Admin/StatusPage.php:75
-msgid "Trabajos por estado"
+#: src/Admin/StatusPage.php:110
+msgid "sin programar: se reprograma al reactivar el plugin o al llamar a Reaper::ensure_schedule()"
 msgstr ""
 
-#: src/Admin/StatusPage.php:80
-msgid "Total"
+#: src/Admin/StatusPage.php:116
+msgid "Extensión GD de PHP"
 msgstr ""
 
-#: src/Admin/StatusPage.php:85
-msgid "Sin trabajos todavía. Usa «wp orp seed» para crear uno de prueba."
-msgstr ""
-
-#: src/Admin/StatusPage.php:97
-msgid "Agentes"
-msgstr ""
-
-#: src/Admin/StatusPage.php:103
-msgid "Versión"
-msgstr ""
-
-#: src/Admin/StatusPage.php:104
-msgid "Último aviso"
-msgstr ""
-
-#: src/Admin/StatusPage.php:109
-msgid "Sin agentes emparejados."
+#: src/Admin/StatusPage.php:119
+msgid "disponible: el logo se convierte a PNG para la impresora térmica"
 msgstr ""
 
 #: src/Admin/StatusPage.php:120
-#: src/Admin/TemplatePage.php:205
-msgid "nunca"
+msgid "no disponible: el logo no se emitirá en el ticket (necesaria para el bloque «Logo»)"
+msgstr ""
+
+#: src/Admin/StatusPage.php:127
+msgid "Enlaces permanentes"
+msgstr ""
+
+#: src/Admin/StatusPage.php:130
+msgid "activos: la API REST responde en /wp-json/"
+msgstr ""
+
+#: src/Admin/StatusPage.php:131
+msgid "en «simple»: la API responde solo por ?rest_route=; activa enlaces permanentes"
+msgstr ""
+
+#: src/Admin/StatusPage.php:141
+msgid "Capacidad manage_orp_print"
+msgstr ""
+
+#: src/Admin/StatusPage.php:144
+msgid "asignada al rol administrator; tu usuario puede gestionar el plugin"
+msgstr ""
+
+#: src/Admin/StatusPage.php:145
+msgid "el rol administrator no la tiene: reactiva el plugin para restaurarla"
+msgstr ""
+
+#: src/Admin/StatusPage.php:150
+msgid "Versión de WordPress (mínimo 6.8)"
+msgstr ""
+
+#. translators: %s: versión de WordPress instalada.
+#: src/Admin/StatusPage.php:152
+#, php-format
+msgid "instalada: %s"
+msgstr ""
+
+#: src/Admin/StatusPage.php:157
+msgid "Versión de PHP (soportada 8.1–8.3)"
+msgstr ""
+
+#. translators: %s: versión de PHP instalada.
+#: src/Admin/StatusPage.php:159
+#, php-format
+msgid "versión instalada: %s"
+msgstr ""
+
+#: src/Admin/StatusPage.php:168
+msgid "Comprobaciones automáticas"
+msgstr ""
+
+#: src/Admin/StatusPage.php:176
+msgid "Correcto"
+msgstr ""
+
+#: src/Admin/StatusPage.php:179
+msgid "Revisar"
+msgstr ""
+
+#: src/Admin/StatusPage.php:195
+msgid "Versiones"
+msgstr ""
+
+#: src/Admin/StatusPage.php:198
+msgid "Plugin"
+msgstr ""
+
+#: src/Admin/StatusPage.php:199
+msgid "API REST"
+msgstr ""
+
+#: src/Admin/StatusPage.php:200
+msgid "Esquema de base de datos"
+msgstr ""
+
+#: src/Admin/StatusPage.php:201
+msgid "Versión de configuración (config_version)"
+msgstr ""
+
+#: src/Admin/StatusPage.php:202
+msgid "Versión de plantilla (orp_template_version)"
+msgstr ""
+
+#: src/Admin/StatusPage.php:204
+msgid "Papel / codificación"
+msgstr ""
+
+#. translators: 1: ancho de papel en mm, 2: codificación.
+#: src/Admin/StatusPage.php:208
+#, php-format
+msgid "%1$s mm · %2$s"
+msgstr ""
+
+#: src/Admin/StatusPage.php:214
+msgid "Disparo"
+msgstr ""
+
+#: src/Admin/StatusPage.php:215
+msgid "Caducidad / retención de trabajos"
+msgstr ""
+
+#. translators: 1: minutos de caducidad, 2: días de retención.
+#: src/Admin/StatusPage.php:219
+#, php-format
+msgid "%1$d min · %2$d días"
+msgstr ""
+
+#: src/Admin/StatusPage.php:234
+msgid "Locales"
+msgstr ""
+
+#: src/Admin/StatusPage.php:247
+msgid "Sin locales todavía."
+msgstr ""
+
+#: src/Admin/StatusPage.php:286
+msgid "Agentes"
+msgstr ""
+
+#: src/Admin/StatusPage.php:294
+msgid "Plataforma"
+msgstr ""
+
+#: src/Admin/StatusPage.php:295
+msgid "Salidas"
+msgstr ""
+
+#: src/Admin/StatusPage.php:300
+msgid "Sin agentes emparejados. Genera un código en «Locales y reglas» y ejecuta «orvitaprint pair» en el TPV."
+msgstr ""
+
+#. translators: 1: impresora, 2: copias.
+#: src/Admin/StatusPage.php:352
+#, php-format
+msgid "%1$s ×%2$d"
+msgstr ""
+
+#: src/Admin/StatusPage.php:394
+msgid "Sin trabajos todavía. Los pedidos que no tengan local asignable se registran en el log sin crear trabajo."
+msgstr ""
+
+#: src/Admin/StatusPage.php:402
+msgid "Total"
+msgstr ""
+
+#: src/Admin/StatusPage.php:415
+msgid "Abrir la cola para actuar sobre los trabajos"
+msgstr ""
+
+#. translators: %d: número de eventos mostrados.
+#: src/Admin/StatusPage.php:443
+#, php-format
+msgid "Últimos %d eventos"
+msgstr ""
+
+#: src/Admin/StatusPage.php:451
+msgid "Fecha (local)"
+msgstr ""
+
+#: src/Admin/StatusPage.php:452
+msgid "Nivel"
+msgstr ""
+
+#: src/Admin/StatusPage.php:453
+msgid "Contexto"
+msgstr ""
+
+#: src/Admin/StatusPage.php:454
+msgid "Evento"
+msgstr ""
+
+#: src/Admin/StatusPage.php:455
+msgid "Trabajo / agente"
+msgstr ""
+
+#: src/Admin/StatusPage.php:460
+msgid "Sin eventos registrados todavía (los registros se conservan 30 días)."
+msgstr ""
+
+#. translators: %d: id de trabajo.
+#: src/Admin/StatusPage.php:468
+#, php-format
+msgid "trabajo #%d"
+msgstr ""
+
+#. translators: %d: id de agente.
+#: src/Admin/StatusPage.php:471
+#, php-format
+msgid "agente #%d"
 msgstr ""
 
 #: src/Admin/TemplatePage.php:63
@@ -649,6 +1191,10 @@ msgstr ""
 msgid "Sin cambios registrados todavía."
 msgstr ""
 
+#: src/Admin/TemplatePage.php:205
+msgid "nunca"
+msgstr ""
+
 #: src/Admin/TemplatePage.php:241
 msgid "Elegir logo del ticket"
 msgstr ""
@@ -702,6 +1248,26 @@ msgstr ""
 msgid "php tools/simulator.php --url=<URL-del-sitio> --token=%s --once"
 msgstr ""
 
+#. translators: 1: lista de ids de trabajo, 2: nombre del local, 3: disparo.
+#: src/Domain/OrderTrigger.php:192
+#, php-format
+msgid "Orvita Print: trabajos %1$s encolados (local %2$s, disparo: %3$s)."
+msgstr ""
+
+#. translators: %d: número de trabajos cancelados.
+#: src/Domain/OrderTrigger.php:246
+#, php-format
+msgid "Orvita Print: pedido anulado; %d trabajo(s) pendiente(s) cancelado(s), sin papel."
+msgstr ""
+
+#: src/Domain/Reaper.php:182
+msgid "Intentos agotados: el agente no confirmó el trabajo dentro del arrendamiento."
+msgstr ""
+
+#: src/Domain/Reaper.php:200
+msgid "Intentos agotados sin agente al cargo."
+msgstr ""
+
 #: src/Rest/Auth.php:96
 msgid "Falta el token del agente."
 msgstr ""
@@ -739,6 +1305,49 @@ msgstr ""
 
 #: src/Rest/JobsController.php:241
 msgid "fallo transitorio"
+msgstr ""
+
+#: src/Rest/PairController.php:71
+msgid "Falta el código de emparejamiento o no tiene 6 dígitos."
+msgstr ""
+
+#: src/Rest/PairController.php:77
+msgid "Código desconocido."
+msgstr ""
+
+#: src/Rest/PairController.php:104
+msgid "El código de emparejamiento ha caducado. Genera otro en el panel (Locales y reglas)."
+msgstr ""
+
+#: src/Rest/PairController.php:115
+msgid "Demasiados intentos con este código. Espera 15 minutos o genera un código nuevo."
+msgstr ""
+
+#: src/Rest/PairController.php:124
+#: src/Rest/PairController.php:156
+msgid "Este código ya se usó: un código empareja un solo agente."
+msgstr ""
+
+#: src/Rest/PairController.php:130
+msgid "Falta el nombre del agente (agent_name)."
+msgstr ""
+
+#: src/Rest/PairController.php:147
+msgid "El local del código ya no existe o está desactivado."
+msgstr ""
+
+#: src/Rest/PairController.php:159
+msgid "El código ya no es válido. Genera otro en el panel."
+msgstr ""
+
+#: src/Rest/PairController.php:179
+msgid "No se pudo completar el emparejamiento. Genera un código nuevo e inténtalo de nuevo."
+msgstr ""
+
+#. translators: 1: número de fallos permitidos, 2: minutos de espera.
+#: src/Rest/PairController.php:289
+#, php-format
+msgid "Demasiados intentos de emparejamiento desde esta IP (%1$d fallos en una hora). Espera unos %2$d minutos antes de reintentar."
 msgstr ""
 
 #: src/Support/Presets.php:32
@@ -820,10 +1429,6 @@ msgstr ""
 #: src/Template/DocumentBuilder.php:106
 #: src/Template/DocumentBuilder.php:423
 msgid "TOTAL"
-msgstr ""
-
-#: src/Template/DocumentBuilder.php:152
-msgid "Pedido"
 msgstr ""
 
 #: src/Template/DocumentBuilder.php:155
