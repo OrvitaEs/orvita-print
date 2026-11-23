@@ -53,6 +53,17 @@ public sealed class DoctorArgs
     public bool Zip { get; set; }
 }
 
+public sealed class QueueListArgs
+{
+    /// <summary>Máximo de trabajos devueltos (Doc/08 §3: por defecto 50, tope 200).</summary>
+    public int? Limit { get; set; }
+}
+
+public sealed class QueueItemArgs
+{
+    public long? JobId { get; set; }
+}
+
 /// <summary>
 /// Despachador de operaciones de la pipe de gestión (F2-08, ADR-13): pair, destination
 /// add/list/remove, status, test, doctor y restart-poller. NO expone el token NUNCA (S-05):
@@ -160,6 +171,8 @@ public sealed class ManagementRequestHandler
             ManagementProtocol.Operations.Test => await TestAsync(request, cancellationToken).ConfigureAwait(false),
             ManagementProtocol.Operations.Doctor => Doctor(request),
             ManagementProtocol.Operations.RestartPoller => await RestartPollerAsync(request, cancellationToken).ConfigureAwait(false),
+            ManagementProtocol.Operations.QueueList => QueueList(request),
+            ManagementProtocol.Operations.QueueItem => QueueItem(request),
             _ => ManagementResponse.Failure(request.Id, $"Operación desconocida «{request.Op}».", "unknown_operation"),
         };
     }
@@ -468,6 +481,73 @@ public sealed class ManagementRequestHandler
             zip_bytes = zipBytes,
         });
     }
+
+    // ------------------------------------------------------------------------ queue (GUI-02)
+
+    /// <summary>
+    /// Cola local para la GUI de bandeja (GUI-02, Doc/08 §3): lectura PURA del outbox vía
+    /// <see cref="OutboxRepository.ListLatest"/> — sin efectos, sin estados del servidor
+    /// (eso es territorio del panel web). SIN document_json: el detalle del documento viaja
+    /// solo en <see cref="QueueItem"/>. El documento completo no sale por la pipe.
+    /// </summary>
+    private ManagementResponse QueueList(ManagementRequest request)
+    {
+        var args = BindArgs<QueueListArgs>(request);
+        var limit = Math.Clamp(args.Limit ?? 50, 1, 200);
+        var jobs = _outbox.ListLatest(limit);
+
+        return ManagementResponse.Success(request.Id, new
+        {
+            limit,
+            total_jobs = _outbox.CountByState(OutboxJobState.Received)
+                + _outbox.CountByState(OutboxJobState.Printing)
+                + _outbox.CountByState(OutboxJobState.Done)
+                + _outbox.CountByState(OutboxJobState.Error),
+            jobs = jobs.Select(ToQueueWire).ToArray(),
+        });
+    }
+
+    /// <summary>Detalle de UN trabajo de la cola: campos + documento legible (GUI-02/04).</summary>
+    private ManagementResponse QueueItem(ManagementRequest request)
+    {
+        var args = BindArgs<QueueItemArgs>(request);
+        if (args.JobId is not { } jobId || jobId <= 0)
+        {
+            return ManagementResponse.Failure(request.Id, "Falta el job_id del trabajo (queue.item {job_id}).", "invalid_argument");
+        }
+
+        var job = _outbox.Get(jobId);
+        if (job is null)
+        {
+            return ManagementResponse.Failure(request.Id, $"El trabajo {jobId} no está en la cola local (o ya se purgó).", "job_not_found");
+        }
+
+        var document = job.TryParseDocument();
+        return ManagementResponse.Success(request.Id, new
+        {
+            job = ToQueueWire(job),
+            document_parse_ok = job.DocumentJson == "{}" || document is not null,
+            // Texto legible del documento neutro (Core, portable). NUNCA el JSON crudo con
+            // todo su volumen: la GUI muestra texto, el ZIP de diagnóstico lleva el detalle.
+            document_text = DocumentText.Render(document),
+        });
+    }
+
+    private static object ToQueueWire(OutboxJob job) => new
+    {
+        job_id = job.JobId,
+        order_id = job.TryParseDocument()?.Meta?.OrderId,
+        printer_role = job.PrinterRole,
+        copies = job.Copies,
+        state = job.State.ToString().ToLowerInvariant(),
+        duplicate_suspected = job.DuplicateSuspected,
+        attempts = job.Attempts,
+        error_code = job.ErrorCode,
+        error_message = job.ErrorMessage,
+        created_at = job.CreatedAt,
+        updated_at = job.UpdatedAt,
+        printed_at = job.PrintedAt,
+    };
 
     // ---------------------------------------------------------------------- restart-poller
 

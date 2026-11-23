@@ -24,6 +24,7 @@ public static class ManagementProtocol
     public static class Operations
     {
         public const string Pair = "pair";
+        public const string PairRemove = "pair.remove";
         public const string DestinationAdd = "destination.add";
         public const string DestinationList = "destination.list";
         public const string DestinationRemove = "destination.remove";
@@ -31,6 +32,8 @@ public static class ManagementProtocol
         public const string Test = "test";
         public const string Doctor = "doctor";
         public const string RestartPoller = "restart-poller";
+        public const string QueueList = "queue.list";
+        public const string QueueItem = "queue.item";
         public const string Ping = "ping";
     }
 
