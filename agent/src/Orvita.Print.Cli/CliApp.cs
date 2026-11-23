@@ -166,15 +166,17 @@ public static class CliApp
                 return ExitCodes.Ok;
             }
 
-            case DoctorCommand:
+            case DoctorCommand doctor:
             {
-                var response = client.Request(ManagementProtocol.Operations.Doctor);
+                var response = client.Request(
+                    ManagementProtocol.Operations.Doctor,
+                    doctor.Zip ? new { zip = true } : null);
                 if (!response.Ok)
                 {
                     return await PrintErrorAsync(errors, response).ConfigureAwait(false);
                 }
 
-                return await PrintDoctorAsync(response, output).ConfigureAwait(false);
+                return await PrintDoctorAsync(response, output, doctor.OutPath, errors).ConfigureAwait(false);
             }
 
             case RestartPollerCommand:
@@ -363,11 +365,11 @@ public static class CliApp
         return ExitCodes.Ok;
     }
 
-    private static async Task<int> PrintDoctorAsync(ManagementResponse response, TextWriter output)
+    private static async Task<int> PrintDoctorAsync(ManagementResponse response, TextWriter output, string? outPath = null, TextWriter? errors = null)
     {
         var data = response.Data!.Value;
 
-        await output.WriteLineAsync("DIAGNÓSTICO Orvita Print (resumen básico; el ZIP completo llega con F2-12):").ConfigureAwait(false);
+        await output.WriteLineAsync("DIAGNÓSTICO Orvita Print:").ConfigureAwait(false);
         await output.WriteLineAsync($"  Versión del agente: {Data(response, "version")} · .NET: {Data(response, "net_version")}").ConfigureAwait(false);
         await output.WriteLineAsync($"  Sistema: {Data(response, "os")}").ConfigureAwait(false);
 
@@ -399,6 +401,35 @@ public static class CliApp
         else
         {
             await output.WriteLineAsync($"  Impresoras instaladas ({printers.Count}).").ConfigureAwait(false);
+        }
+
+        // F2-12: el servicio genera el ZIP y la pipe devuelve la RUTA (los binarios nunca viajan por la pipe).
+        var zipPath = StringOrNull(response, "zip_path");
+        if (zipPath is not null)
+        {
+            await output.WriteLineAsync($"  ZIP de diagnóstico: {zipPath} ({IntOrNull(response, "zip_bytes")} bytes).").ConfigureAwait(false);
+
+            if (outPath is not null && errors is not null)
+            {
+                try
+                {
+                    var destination = Path.GetFullPath(outPath);
+                    var parent = Path.GetDirectoryName(destination);
+                    if (!string.IsNullOrEmpty(parent))
+                    {
+                        Directory.CreateDirectory(parent);
+                    }
+
+                    File.Copy(zipPath, destination, overwrite: true);
+                    await output.WriteLineAsync($"  Copiado a: {destination}").ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+                {
+                    await errors.WriteLineAsync($"ERROR: no se pudo copiar el ZIP a «{outPath}»: {ex.Message}").ConfigureAwait(false);
+                    await errors.WriteLineAsync($"  (el ZIP original sigue en {zipPath})").ConfigureAwait(false);
+                    return ExitCodes.Failure;
+                }
+            }
         }
 
         return ExitCodes.Ok;

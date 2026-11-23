@@ -66,7 +66,7 @@ public static class CliParser
                 "destination" => ParseDestination(rest, pipeName),
                 "status" => ParseOutcome.Ok(new StatusCommand(), pipeName),
                 "test" => ParseTest(rest, pipeName),
-                "doctor" => ParseOutcome.Ok(new DoctorCommand(), pipeName),
+                "doctor" => ParseDoctor(rest, pipeName),
                 "restart-poller" => ParseOutcome.Ok(new RestartPollerCommand(), pipeName),
                 _ => ParseOutcome.UsageError(
                     $"Comando desconocido «{args[0]}». Usa orvitaprint --help para ver los comandos disponibles.", pipeName),
@@ -304,6 +304,38 @@ public static class CliParser
         }
 
         return ParseOutcome.Ok(new TestCommand(role), pipeName);
+    }
+
+    // -------------------------------------------------------------------------------- doctor
+
+    private static ParseOutcome ParseDoctor(string[] args, string pipeName)
+    {
+        var zip = false;
+        string? outPath = null;
+        for (var i = 0; i < args.Length; i++)
+        {
+            switch (args[i].ToLowerInvariant())
+            {
+                case "--zip":
+                    zip = true;
+                    break;
+                case "--out" or "-o" when i + 1 < args.Length:
+                    outPath = args[++i].Trim();
+                    if (outPath.Length == 0)
+                    {
+                        throw new UsageException("--out espera una ruta de destino (p. ej. C:\\diag\\orvitaprint.zip).");
+                    }
+
+                    break;
+                case "--out" or "-o":
+                    throw new UsageException("--out espera una ruta de destino (p. ej. C:\\diag\\orvitaprint.zip).");
+                default:
+                    throw new UsageException($"Argumento inesperado «{args[i]}» en doctor (esperaba --zip o --out <ruta>).");
+            }
+        }
+
+        // --out implica --zip: pedir el fichero es pedir el informe completo.
+        return ParseOutcome.Ok(new DoctorCommand(zip || outPath is not null, outPath), pipeName);
     }
 
     /// <summary>Error de uso: el CLI lo imprime en stderr con código 2.</summary>

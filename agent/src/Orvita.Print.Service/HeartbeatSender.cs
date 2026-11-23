@@ -11,6 +11,19 @@ public static class AgentVersion
     public static string Current { get; } =
         typeof(AgentVersion).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
             ?.InformationalVersion ?? "0.0.0-dev";
+
+    /// <summary>
+    /// La versión del ensamblado en forma parseable para comparaciones de actualización (F2-11):
+    /// se recortan sufijos («1.0.0-dev» → «1.0.0»). false si aun así no parsea (canal inactivo).
+    /// </summary>
+    public static bool TryParseCurrentVersion(out Version version)
+    {
+        version = new Version(0, 0);
+        var raw = Current;
+        var cut = raw.IndexOfAny(['-', '+']);
+        var clean = cut >= 0 ? raw[..cut] : raw;
+        return Version.TryParse(clean, out version!) && version.Major >= 0;
+    }
 }
 
 /// <summary>

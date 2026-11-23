@@ -361,6 +361,32 @@ public sealed class OutboxRepository : IDisposable
         return reader.Read() ? MapJob(reader) : null;
     }
 
+    /// <summary>
+    /// Últimos N trabajos por actividad reciente (updated_at DESC, job_id DESC) — para el
+    /// informe de diagnóstico (F2-12: «últimas 50 entradas de la cola con estados»). El
+    /// documento completo NO se expone en el informe; el llamador elige los campos.
+    /// </summary>
+    public IReadOnlyList<OutboxJob> ListLatest(int limit)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(limit);
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT job_id, printer_role, copies, document_json, state, attempts, duplicate_suspected,
+                   error_code, error_message, created_at, updated_at, printed_at
+            FROM outbox_jobs ORDER BY updated_at DESC, job_id DESC LIMIT $limit;
+            """;
+        command.Parameters.AddWithValue("$limit", limit);
+        var jobs = new List<OutboxJob>();
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            jobs.Add(MapJob(reader));
+        }
+
+        return jobs;
+    }
+
     /// <summary>Trabajos en un estado (FIFO por job id). Para `status`/`doctor` y pruebas.</summary>
     public IReadOnlyList<OutboxJob> GetByState(OutboxJobState state)
     {

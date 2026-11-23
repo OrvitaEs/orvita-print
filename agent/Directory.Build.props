@@ -7,5 +7,9 @@
     <RootNamespace>Orvita.Print</RootNamespace>
     <PlatformTarget>x64</PlatformTarget>
     <InvariantGlobalization>false</InvariantGlobalization>
+    <!-- Versión ÚNICA de todos los proyectos del agente (F2-11): la reporta el heartbeat,
+         status y doctor (InformationalVersion), y la compara el canal de actualización. Los
+         sufijos «-dev» se recortan al comparar; F3 ajusta el número en cada release. -->
+    <Version>1.0.0-dev</Version>
   </PropertyGroup>
 </Project>

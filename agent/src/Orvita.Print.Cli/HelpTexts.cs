@@ -15,7 +15,7 @@ public static class HelpTexts
           destination     Salidas de impresión: add | list | remove
           status          Estado del agente: emparejamiento, poller, cola, último error.
           test            Imprime el ticket de prueba en una salida (--role).
-          doctor          Resumen de diagnóstico (versiones, rutas, impresoras, cola).
+          doctor          Diagnóstico: resumen y ZIP exportable (--zip, --out <ruta>).
           restart-poller  Reinicia el bucle de trabajo sin reiniciar el servicio (avanzado).
           help            Ayuda de un comando: orvitaprint help pair
 
@@ -93,13 +93,18 @@ public static class HelpTexts
         """;
 
     public static string Doctor() => """
-        orvitaprint doctor — resumen de diagnóstico
+        orvitaprint doctor — resumen de diagnóstico y ZIP exportable
 
-        Uso: orvitaprint doctor
+        Uso: orvitaprint doctor [--zip] [--out <ruta>]
+
+          --zip              El servicio genera el ZIP de diagnóstico en su carpeta «diagnostics»
+                             (logs de los últimos 7 días + diagnostics.json) y muestra la ruta.
+          --out <ruta>       Además copia el ZIP a esa ruta (implica --zip).
 
         Versiones, rutas (datos, BD, logs), estado del emparejamiento y del poller, cola local
-        e impresoras instaladas. Nunca muestra secretos (S-05). El ZIP exportable completo
-        (orvitaprint doctor --zip) es la tarea F2-12.
+        e impresoras instaladas. Nunca muestra secretos (S-05): el token no está en pantalla,
+        en el log ni en el ZIP (el informe lleva la URL del servidor sin token y sin blob DPAPI).
+        El ZIP contiene solo diagnósticos: order_id/job_id, nunca datos de los tickets.
         """;
 
     public static string RestartPoller() => """

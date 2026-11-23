@@ -46,6 +46,12 @@ public sealed class TestArgs
     public string? Role { get; set; }
 }
 
+public sealed class DoctorArgs
+{
+    /// <summary>true → el servicio genera el ZIP de diagnóstico y devuelve su ruta (F2-12).</summary>
+    public bool Zip { get; set; }
+}
+
 /// <summary>
 /// Despachador de operaciones de la pipe de gestión (F2-08, ADR-13): pair, destination
 /// add/list/remove, status, test, doctor y restart-poller. NO expone el token NUNCA (S-05):
@@ -65,6 +71,7 @@ public sealed class ManagementRequestHandler
     private readonly RemoteConfigState _configState;
     private readonly AgentRuntimeStatus _runtime;
     private readonly AgentOptions _options;
+    private readonly DiagnosticsBundleBuilder? _diagnostics;
     private readonly ILogger _logger;
 
     public ManagementRequestHandler(
@@ -78,7 +85,8 @@ public sealed class ManagementRequestHandler
         RemoteConfigState configState,
         AgentRuntimeStatus runtime,
         AgentOptions options,
-        ILogger<ManagementRequestHandler> logger)
+        ILogger<ManagementRequestHandler> logger,
+        DiagnosticsBundleBuilder? diagnostics = null)
     {
         _connection = connection;
         _store = store;
@@ -91,6 +99,7 @@ public sealed class ManagementRequestHandler
         _runtime = runtime;
         _options = options;
         _logger = logger;
+        _diagnostics = diagnostics;
     }
 
     /// <summary>Procesa una solicitud. Nunca lanza: los errores van como respuesta (ok:false).</summary>
@@ -145,7 +154,7 @@ public sealed class ManagementRequestHandler
             ManagementProtocol.Operations.DestinationRemove => DestinationRemove(request),
             ManagementProtocol.Operations.Status => Status(request.Id),
             ManagementProtocol.Operations.Test => await TestAsync(request, cancellationToken).ConfigureAwait(false),
-            ManagementProtocol.Operations.Doctor => Doctor(request.Id),
+            ManagementProtocol.Operations.Doctor => Doctor(request),
             ManagementProtocol.Operations.RestartPoller => await RestartPollerAsync(request, cancellationToken).ConfigureAwait(false),
             _ => ManagementResponse.Failure(request.Id, $"Operación desconocida «{request.Op}».", "unknown_operation"),
         };
@@ -369,17 +378,46 @@ public sealed class ManagementRequestHandler
 
     // ------------------------------------------------------------------------------ doctor
 
-    private ManagementResponse Doctor(long id)
+    private ManagementResponse Doctor(ManagementRequest request)
     {
+        var args = BindArgs<DoctorArgs>(request);
         var pairing = _store.GetPairing();
         var dataDirectory = _options.ResolveDataDirectory();
         var logDirectory = Path.Combine(dataDirectory, "logs");
         var logFiles = Directory.Exists(logDirectory) ? Directory.GetFiles(logDirectory, "*.log").Length : 0;
         var installed = _printers.List();
 
-        return ManagementResponse.Success(id, new
+        // F2-12: el ZIP lo genera el SERVICIO y por la pipe solo viaja la RUTA (nunca binarios).
+        string? zipPath = null;
+        long? zipBytes = null;
+        if (args.Zip)
         {
-            // Resumen básico (F2-08); el ZIP completo es F2-12 (S-05: sin secretos).
+            if (_diagnostics is null)
+            {
+                return ManagementResponse.Failure(
+                    request.Id,
+                    "El generador del ZIP de diagnóstico no está disponible en este servicio.",
+                    "diagnostics_unavailable");
+            }
+
+            try
+            {
+                zipPath = _diagnostics.CreateZip(DateTimeOffset.UtcNow);
+                zipBytes = new FileInfo(zipPath).Length;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "No se pudo generar el ZIP de diagnóstico.");
+                return ManagementResponse.Failure(
+                    request.Id,
+                    $"No se pudo generar el ZIP de diagnóstico: {ex.Message}",
+                    "diagnostics_failed");
+            }
+        }
+
+        return ManagementResponse.Success(request.Id, new
+        {
+            // Resumen básico (F2-08) + ZIP opcional (F2-12, S-05: sin secretos en el informe).
             version = AgentVersion.Current,
             platform = "windows",
             net_version = Environment.Version,
@@ -398,6 +436,8 @@ public sealed class ManagementRequestHandler
             jobs_error = _outbox.CountByState(OutboxJobState.Error),
             printers = installed.Select(p => new { name = p.Name, @default = p.IsDefault, hint = p.StatusHint }).ToArray(),
             no_printers_note = installed.Count == 0 ? "No hay impresoras instaladas en este equipo (Doc/03 §6.6)." : null,
+            zip_path = zipPath,
+            zip_bytes = zipBytes,
         });
     }
 

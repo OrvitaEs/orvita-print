@@ -24,7 +24,8 @@ public sealed record StatusCommand : CliCommand;
 
 public sealed record TestCommand(string? Role) : CliCommand;
 
-public sealed record DoctorCommand : CliCommand;
+/// <summary>doctor: sin flags → resumen; --zip → el servicio genera el ZIP (F2-12); --out copia el ZIP (implica --zip).</summary>
+public sealed record DoctorCommand(bool Zip = false, string? OutPath = null) : CliCommand;
 
 public sealed record RestartPollerCommand : CliCommand;
 

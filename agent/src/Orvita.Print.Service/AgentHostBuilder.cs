@@ -136,7 +136,39 @@ public static class AgentHostBuilder
                 ?? sp.GetRequiredService<AgentOptions>().PollIntervalSeconds,
             logger: sp.GetRequiredService<ILogger<PollerController>>()));
         builder.Services.AddSingleton<ManagementRequestHandler>();
-        builder.Services.AddHostedService<ManagementPipeServer>();
+        // Singleton explícito: el UpdateApplier (F2-11) debe poder parar la pipe limpiamente.
+        builder.Services.AddSingleton<ManagementPipeServer>();
+        builder.Services.AddHostedService(sp => sp.GetRequiredService<ManagementPipeServer>());
+
+        // F2-11: canal de actualización — tarea en segundo plano con token propio, 1×/día.
+        builder.Services.AddSingleton<UpdateStatus>();
+        builder.Services.AddSingleton(sp => sp.GetRequiredService<AgentOptions>().Update);
+        builder.Services.AddSingleton(sp =>
+        {
+            var options = sp.GetRequiredService<AgentOptions>();
+            return new UpdateCheckerOptions
+            {
+                ManifestUrl = options.Update.ManifestUrl,
+                // Clave pública EMBEBIDA (no configuración): quien pudiera cambiarla invalidaría la cadena.
+                PublicKeyBase64 = UpdateTrust.ReleasePublicKeyBase64,
+            };
+        });
+        builder.Services.AddSingleton<IUpdateChecker>(sp => new UpdateChecker(
+            sp.GetRequiredService<UpdateCheckerOptions>(),
+            verifier: new Ed25519Verifier(),
+            log: message => sp.GetRequiredService<ILoggerFactory>()
+                .CreateLogger("Orvita.Print.Core.UpdateChecker")
+                .LogInformation("{Message}", message)));
+        builder.Services.AddSingleton<IUpdateApplier>(sp => new UpdateApplier(
+            sp.GetRequiredService<PollerController>(),
+            sp.GetRequiredService<ManagementPipeServer>(),
+            sp.GetRequiredService<UpdateStatus>(),
+            logger: sp.GetRequiredService<ILogger<UpdateApplier>>()));
+        builder.Services.AddSingleton<UpdateOrchestrator>();
+        builder.Services.AddHostedService<UpdateService>();
+
+        // F2-12: ZIP de diagnóstico (doctor --zip), con el estado de updates dentro del informe.
+        builder.Services.AddSingleton<DiagnosticsBundleBuilder>();
 
         builder.Services.AddHostedService<AgentWorker>();
         builder.Services.AddWindowsService(windowsServiceOptions =>

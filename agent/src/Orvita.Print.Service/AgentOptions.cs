@@ -13,6 +13,22 @@ public sealed class ServerOptions
     public bool AllowInsecureHttp { get; set; }
 }
 
+/// <summary>Canal de actualización (F2-11): appsettings bootstrap (Doc/03 §6.2.1, capa estática).</summary>
+public sealed class UpdateServiceOptions
+{
+    /// <summary>Interruptor maestro (por defecto activo: con ManifestUrl vacío no hay red).</summary>
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>URL del latest.json (https://updates.…/agent/latest.json). Vacío → canal inactivo.</summary>
+    public string? ManifestUrl { get; set; }
+
+    /// <summary>Cadencia de comprobación en horas (Doc/03 §10: 1×/día).</summary>
+    public int CheckIntervalHours { get; set; } = 24;
+
+    /// <summary>Retardo del primer chequeo tras arrancar el servicio (no compite con el arranque).</summary>
+    public int FirstCheckDelayMinutes { get; set; } = 5;
+}
+
 /// <summary>
 /// Configuración bootstrap del servicio (Doc/03 §6.2.1, capa «estática»): SOLO infraestructura
 /// — rutas, log, intervalos de respaldo y, como comodín de DESARROLLO, la URL/token directos
@@ -41,6 +57,13 @@ public sealed class AgentOptions
 
     /// <summary>Base de espera entre reintentos transitorios (2 s → 4 s → 6 s…).</summary>
     public int TransientRetryDelaySeconds { get; set; } = 2;
+
+    /// <summary>
+    /// Canal de actualización automática (F2-11, Doc/03 §10). Todo es infraestructura bootstrap
+    /// (appsettings.json): el manifiesto llega de una URL estática que publica F3-03; la clave
+    /// pública de verificación NO es configuración, va embebida (<see cref="UpdateTrust"/>).
+    /// </summary>
+    public UpdateServiceOptions Update { get; set; } = new();
 
     public ServerOptions Server { get; set; } = new();
 

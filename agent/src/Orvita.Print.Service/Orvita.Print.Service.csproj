@@ -3,7 +3,6 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <Description>Servicio Windows headless de Orvita Print (ADR-09/13): worker + UseWindowsService, cola local, renderizado, impresión y heartbeat. Gestionado por CLI sobre named pipe (F2-08).</Description>
-    <Version>1.0.0-dev</Version>
     <!-- net10.0-windows: referencia a Printing.Windows (ADR-12) y por tanto solo Windows en V1. -->
     <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>Orvita.Print.Service</RootNamespace>
