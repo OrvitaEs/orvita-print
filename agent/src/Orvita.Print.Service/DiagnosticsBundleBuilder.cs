@@ -32,6 +32,7 @@ public sealed class DiagnosticsBundleBuilder
     private readonly ServerConnection _connection;
     private readonly AgentRuntimeStatus _runtime;
     private readonly UpdateStatus _updates;
+    private readonly LicenseState? _license;
     private readonly ILogger _logger;
 
     public DiagnosticsBundleBuilder(
@@ -44,7 +45,8 @@ public sealed class DiagnosticsBundleBuilder
         ServerConnection connection,
         AgentRuntimeStatus runtime,
         UpdateStatus updates,
-        ILogger? logger = null)
+        ILogger? logger = null,
+        LicenseState? license = null)
     {
         _options = options;
         _store = store;
@@ -55,6 +57,7 @@ public sealed class DiagnosticsBundleBuilder
         _connection = connection;
         _runtime = runtime;
         _updates = updates;
+        _license = license;
         _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
     }
 
@@ -188,6 +191,8 @@ public sealed class DiagnosticsBundleBuilder
                 last_version_seen = updateVersion,
                 last_error = updateError,
             },
+            // F3-02: licencia con su estado (valid/missing/invalid/expired_updates). Sin secretos (S-05).
+            license = _license?.ToWire(),
             queue = new
             {
                 received = _outbox.CountByState(OutboxJobState.Received),

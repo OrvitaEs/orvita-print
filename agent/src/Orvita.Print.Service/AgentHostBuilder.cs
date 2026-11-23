@@ -142,6 +142,15 @@ public static class AgentHostBuilder
 
         // F2-11: canal de actualización — tarea en segundo plano con token propio, 1×/día.
         builder.Services.AddSingleton<UpdateStatus>();
+        // F3-02: licencia (license.dat junto a la BD) — validación LOCAL con clave pública embebida.
+        builder.Services.AddSingleton(sp =>
+        {
+            var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("Orvita.Print.Service.LicenseState");
+            return LicenseState.Load(
+                Path.Combine(options.ResolveDataDirectory(), "license.dat"),
+                DateTimeOffset.UtcNow,
+                logger);
+        });
         builder.Services.AddSingleton(sp => sp.GetRequiredService<AgentOptions>().Update);
         builder.Services.AddSingleton(sp =>
         {

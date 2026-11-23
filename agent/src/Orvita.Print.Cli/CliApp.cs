@@ -327,6 +327,8 @@ public static class CliApp
             await output.WriteLineAsync($"Último error de impresión: {lastPrintError}").ConfigureAwait(false);
         }
 
+        await PrintLicenseAsync(data, output, indent: string.Empty).ConfigureAwait(false);
+
         var destinations = data.TryGetProperty("destinations", out var ds) && ds.ValueKind == JsonValueKind.Array
             ? ds.EnumerateArray().ToList()
             : [];
@@ -391,6 +393,11 @@ public static class CliApp
 
         await output.WriteLineAsync($"  Poller: {Data(response, "poller_state")} · cola: {IntOrNull(response, "pending_local")} pendiente(s), {IntOrNull(response, "jobs_done")} impreso(s), {IntOrNull(response, "jobs_error")} error(es).").ConfigureAwait(false);
 
+        if (data.TryGetProperty("license", out var doctorLicense) && doctorLicense.ValueKind == JsonValueKind.Object)
+        {
+            await PrintLicenseAsync(doctorLicense, output, indent: "  ").ConfigureAwait(false);
+        }
+
         var printers = data.TryGetProperty("printers", out var ps) && ps.ValueKind == JsonValueKind.Array
             ? ps.EnumerateArray().ToList()
             : [];
@@ -433,6 +440,45 @@ public static class CliApp
         }
 
         return ExitCodes.Ok;
+    }
+
+    /// <summary>
+    /// Bloque de licencia (F3-02) para <c>status</c> y <c>doctor</c>: estado claro en español
+    /// (missing/valid/expired_updates/invalid). La licencia no contiene secretos (S-05).
+    /// </summary>
+    private static async Task PrintLicenseAsync(JsonElement license, TextWriter output, string indent)
+    {
+        if (license.ValueKind != JsonValueKind.Object)
+        {
+            return; // handlers sin licencia cableada (humos): la sección no aparece
+        }
+
+        var state = license.TryGetProperty("state", out var s) && s.ValueKind == JsonValueKind.String ? s.GetString() : "?";
+        switch (state)
+        {
+            case "valid":
+            case "expired_updates":
+                var sku = license.TryGetProperty("sku", out var skuEl) && skuEl.ValueKind == JsonValueKind.String ? skuEl.GetString() : "?";
+                var max = license.TryGetProperty("max_locations", out var maxEl) && maxEl.ValueKind == JsonValueKind.Number
+                    ? (maxEl.GetInt32() == 0 ? "ilimitado" : $"{maxEl.GetInt32()} local(es)")
+                    : "?";
+                var until = license.TryGetProperty("updates_until", out var untilEl) && untilEl.ValueKind == JsonValueKind.String ? untilEl.GetString() : "?";
+                var customer = license.TryGetProperty("customer", out var customerEl) && customerEl.ValueKind == JsonValueKind.String ? customerEl.GetString() : "?";
+                await output.WriteLineAsync($"{indent}Licencia: {sku} — {max} · actualizaciones hasta {until} · {customer}").ConfigureAwait(false);
+                if (state == "expired_updates")
+                {
+                    await output.WriteLineAsync($"{indent}  Las actualizaciones automáticas están DESACTIVADAS al pasar updates_until; el agente sigue funcionando (Doc/03 §10). Renueva la licencia para reactivarlas.").ConfigureAwait(false);
+                }
+                break;
+
+            case "invalid":
+                await output.WriteLineAsync($"{indent}Licencia: NO VÁLIDA — el agente funciona con 1 local. Revisa el fichero indicado (detalle en orvitaprint doctor).").ConfigureAwait(false);
+                break;
+
+            default: // missing
+                await output.WriteLineAsync($"{indent}Licencia: (sin licencia) — el agente funciona con 1 local. Copia license.dat a la ruta de datos y reinicia el servicio.").ConfigureAwait(false);
+                break;
+        }
     }
 
     private static async Task<int> PrintErrorAsync(TextWriter errors, ManagementResponse response)

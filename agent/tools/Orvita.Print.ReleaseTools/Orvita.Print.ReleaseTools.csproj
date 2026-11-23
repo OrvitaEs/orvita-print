@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <Description>Herramienta de release de Orvita Print (F3-02/F3-03): genkey (ECDSA P-256 para licencias + Ed25519 para manifiestos), genlicense y genmanifest. Es NUESTRA herramienta interna: NO se distribuye en el MSI ni llega al cliente.</Description>
+    <Version>1.0.0</Version>
+    <RootNamespace>Orvita.Print.ReleaseTools</RootNamespace>
+    <AssemblyName>orvita-release</AssemblyName>
+    <!-- net10.0 (portable): la firma ECDSA/Ed25519 no es Windows-specific (ADR-12). -->
+    <TargetFramework>net10.0</TargetFramework>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Orvita.Print.Core\Orvita.Print.Core.csproj" />
+  </ItemGroup>
+
+</Project>

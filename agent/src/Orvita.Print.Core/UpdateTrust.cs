@@ -6,13 +6,15 @@ namespace Orvita.Print.Core;
 /// (appsettings/almacén local): quien pudiera cambiarla invalidaría toda la cadena (Doc/03 §8:
 /// mismo principio que la clave pública de licencia).
 ///
-/// <para><b>SOLO DESARROLLO:</b> esta clave se generó para F2-11 y la MITAD PRIVADA se descartó
-/// (no existe en ningún sitio). No hay firma válida posible hasta que F3-03 genere el par de
-/// release — privada fuera del servidor y del repositorio — y reemplace este valor. El canal
-/// de actualización, además, está desactivado por defecto (Update.ManifestUrl vacío).</para>
+/// <para><b>CLAVE DE RELEASE (F3-03):</b> par real generado con <c>orvita-release genkey
+/// --type ed25519</c> (F3-02). La SEMILLA PRIVADA vive fuera del repositorio y del servidor, con
+/// copia de respaldo offline — ubicación documentada en
+/// <c>agent/tools/Orvita.Print.ReleaseTools/README.md</c>. Toda firma de manifiestos de
+/// actualización se hace con ella (F3-03, <c>genmanifest</c>); si se pierde, no se pueden
+/// publicar updates y hay que rotar la clave embebida.</para>
 /// </summary>
 public static class UpdateTrust
 {
     /// <summary>Clave pública Ed25519 de los manifiestos <c>latest.json</c>, 32 bytes en crudo, base64.</summary>
-    public const string ReleasePublicKeyBase64 = "xc3hv8J5U1VzXFPVV6UUJZwX5g73ev0KvgfLc+QfurM=";
+    public const string ReleasePublicKeyBase64 = "36eHq7nPgCs7Euprcdd2DQAv0r3OA38rv3yzUmCoF6c=";
 }

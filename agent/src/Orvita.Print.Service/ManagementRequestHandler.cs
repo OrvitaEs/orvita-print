@@ -72,6 +72,7 @@ public sealed class ManagementRequestHandler
     private readonly AgentRuntimeStatus _runtime;
     private readonly AgentOptions _options;
     private readonly DiagnosticsBundleBuilder? _diagnostics;
+    private readonly LicenseState? _license;
     private readonly ILogger _logger;
 
     public ManagementRequestHandler(
@@ -86,7 +87,8 @@ public sealed class ManagementRequestHandler
         AgentRuntimeStatus runtime,
         AgentOptions options,
         ILogger<ManagementRequestHandler> logger,
-        DiagnosticsBundleBuilder? diagnostics = null)
+        DiagnosticsBundleBuilder? diagnostics = null,
+        LicenseState? license = null)
     {
         _connection = connection;
         _store = store;
@@ -100,6 +102,7 @@ public sealed class ManagementRequestHandler
         _options = options;
         _logger = logger;
         _diagnostics = diagnostics;
+        _license = license;
     }
 
     /// <summary>Procesa una solicitud. Nunca lanza: los errores van como respuesta (ok:false).</summary>
@@ -358,6 +361,9 @@ public sealed class ManagementRequestHandler
             destinations = _store.ListDestinations().Select(ToWire).ToArray(),
             printers = installed.Select(p => p.Name).ToArray(),
             no_printers_note = installed.Count == 0 ? "No hay impresoras instaladas en este equipo (Doc/03 §6.6)." : null,
+            // F3-02: estado de la licencia (sin secretos — la licencia no contiene ninguno).
+            // En pruebas que cablean el handler sin LicenseState la sección simplemente no aparece.
+            license = _license?.ToWire(),
         });
     }
 
@@ -436,6 +442,7 @@ public sealed class ManagementRequestHandler
             jobs_error = _outbox.CountByState(OutboxJobState.Error),
             printers = installed.Select(p => new { name = p.Name, @default = p.IsDefault, hint = p.StatusHint }).ToArray(),
             no_printers_note = installed.Count == 0 ? "No hay impresoras instaladas en este equipo (Doc/03 §6.6)." : null,
+            license = _license?.ToWire(),
             zip_path = zipPath,
             zip_bytes = zipBytes,
         });

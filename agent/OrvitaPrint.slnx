@@ -12,4 +12,7 @@
     <Project Path="tests/Orvita.Print.Service.Tests/Orvita.Print.Service.Tests.csproj" />
     <Project Path="tests/Orvita.Print.Cli.Tests/Orvita.Print.Cli.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Orvita.Print.ReleaseTools/Orvita.Print.ReleaseTools.csproj" />
+  </Folder>
 </Solution>
