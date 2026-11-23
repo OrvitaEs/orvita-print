@@ -129,3 +129,4 @@ La pizzería inicial no paga licencia: se entrega como caso piloto y activo prop
 | `05-plan-de-ejecucion-y-pruebas.md` | Fases, criterios de aceptación, matriz de pruebas |
 | `06-guia-de-trabajo-f0.md` | Punto de entrada para programar: entorno, estructura, F0 y definición de hecho |
 | `07-plan-tecnico-y-tareas.md` | Desglose operativo: tareas con ID, estimación, entregable y dependencias por fase |
+| `08-gui-agente-avalonia.md` | Especificación de la GUI del agente (post-V1, activada por el piloto): pantallas, cola de trabajos, protocolo y tareas GUI-01..08 |
