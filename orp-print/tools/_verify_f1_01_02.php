@@ -150,10 +150,13 @@ delete_transient( 'orp_fallback_notice' );
 
 // Shipping «Alcalá» con acento coincide con la regla «alcala» (normalización);
 // el billing «Sevilla» no debe intervenir: hay shipping y basta con él.
+// Nota F1-05: wc_create_order dispara el trigger con los datos aún vacíos
+// (cae al default y deja SU aviso); se limpia para comprobar esta resolución.
 $order = wc_create_order();
 $order->set_shipping_city( 'Alcalá' );
 $order->set_billing_city( 'Sevilla' );
 $order->save();
+delete_transient( 'orp_fallback_notice' );
 
 $resolved = LocationResolver::resolve_for_order( $order );
 if ( null !== $resolved && 'v-alcala' === $resolved->code ) {
@@ -170,11 +173,14 @@ if ( false === get_transient( 'orp_fallback_notice' ) ) {
 }
 
 // Ciudad única sin reglas: debe caer al local por defecto (el que esté
-// marcado, que en la siembra base es local-centro).
+// marcado, que en la siembra base es local-centro). La creación ya disparó
+// el trigger con datos vacíos: se limpia antes de la resolución explícita
+// (el aviso por pedido entra UNA vez en la cola desde el cambio F1-05).
 $expected_default = LocationResolver::default_location();
 $order2 = wc_create_order();
 $order2->set_shipping_city( 'Xirivella' );
 $order2->save();
+delete_transient( 'orp_fallback_notice' );
 
 $resolved2 = LocationResolver::resolve_for_order( $order2 );
 if ( null !== $expected_default && null !== $resolved2 && (int) $expected_default->id === (int) $resolved2->id ) {
@@ -197,6 +203,7 @@ $order3 = wc_create_order();
 $order3->set_shipping_city( 'Sevilla' );
 $order3->update_meta_data( 'orp_local_code', 'local-a' );
 $order3->save();
+delete_transient( 'orp_fallback_notice' );
 
 $resolved3 = LocationResolver::resolve_for_order( $order3 );
 if ( null !== $resolved3 && 'v-meta' === $resolved3->code ) {
@@ -211,6 +218,7 @@ $wpdb->update( $wpdb->prefix . 'orp_locations', array( 'enabled' => 0 ), array( 
 $order4 = wc_create_order();
 $order4->set_shipping_city( 'Alcalá' );
 $order4->save();
+delete_transient( 'orp_fallback_notice' );
 
 $resolved4 = LocationResolver::resolve_for_order( $order4 );
 if ( null !== $resolved4 && 'v-alcala' !== $resolved4->code ) {
