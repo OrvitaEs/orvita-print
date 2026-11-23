@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace Orvita\PrintBridge\Admin;
 
+use Orvita\PrintBridge\Domain\DestinationRepository;
 use Orvita\PrintBridge\Domain\LocationRepository;
 
 // Si se llama directamente, salir.
@@ -216,7 +217,7 @@ final class LocationsPage {
 		return implode( ' · ', $out );
 	}
 
-	/** Pinta la página: tabla de locales + formulario de alta/edición. */
+	/** Pinta la página: tabla de locales + formulario de alta/edición + destinos. */
 	public static function render(): void {
 		if ( ! current_user_can( ORP_CAPABILITY ) ) {
 			wp_die( esc_html__( 'No tienes permisos para ver esta página.', 'orp-print' ) );
@@ -359,7 +360,139 @@ final class LocationsPage {
 					<?php endif; ?>
 				</tbody>
 			</table>
+
+			<?php self::render_destinations_panel( $locations ); ?>
 		</div>
+		<?php
+	}
+
+	/**
+	 * Panel de destinos (F1-06): SOLO LECTURA — las salidas las reporta el
+	 * agente en su heartbeat (Doc/04 §2.5); aquí no se editan. Avisos:
+	 * - dos salidas activas del mismo local con la misma impresora (Doc/04
+	 *   §2.8: para eso están las copias, no dos salidas);
+	 * - un local sin ninguna salida activa (no generará trabajos).
+	 *
+	 * @param array<int, array<string, mixed>> $locations Locales existentes.
+	 */
+	private static function render_destinations_panel( array $locations ): void {
+		$all = DestinationRepository::all();
+
+		$by_location = array();
+		foreach ( $all as $destination ) {
+			$by_location[ (int) $destination->location_id ][] = $destination;
+		}
+
+		$duplicate_warnings = array();
+		$empty_warnings     = array();
+
+		foreach ( $locations as $location ) {
+			$location_id = (int) $location['id'];
+			$destinations = $by_location[ $location_id ] ?? array();
+
+			$enabled = array_values(
+				array_filter( $destinations, static fn( $destination ) => 1 === (int) $destination->enabled )
+			);
+
+			// Aviso: dos salidas activas que apuntan a la misma impresora.
+			$printers = array_map(
+				static fn( $destination ) => (string) $destination->printer_name,
+				$enabled
+			);
+
+			$counts   = array_count_values( $printers );
+			$repeated = array_keys( array_filter( $counts, static fn( $count ) => $count > 1 ) );
+
+			foreach ( $repeated as $printer ) {
+				$duplicate_warnings[] = array(
+					'location' => (string) $location['name'],
+					'printer'  => $printer,
+				);
+			}
+
+			// Aviso: sin salidas activas no se crean trabajos.
+			if ( array() === $enabled ) {
+				$empty_warnings[] = (string) $location['name'];
+			}
+		}
+		?>
+		<hr />
+
+		<h2><?php esc_html_e( 'Salidas (destinos) por local', 'orp-print' ); ?></h2>
+		<p class="description">
+			<?php esc_html_e( 'Vista de solo lectura: cada salida la reporta el agente del TPV en su heartbeat (impresora, copias y estado). Cada pedido genera un trabajo por salida activa del local, con copias congeladas al crearlo. Para cambiarlas actúa desde el agente.', 'orp-print' ); ?>
+		</p>
+
+		<?php if ( array() !== $duplicate_warnings ) : ?>
+			<?php foreach ( $duplicate_warnings as $warning ) : ?>
+				<div class="notice notice-warning inline">
+					<p>
+						<?php
+						printf(
+							/* translators: 1: nombre del local, 2: nombre de la impresora. */
+							esc_html__( 'Aviso: dos salidas activas del local «%1$s» apuntan a la misma impresora («%2$s»). Para varias copias usa la salida con su número de copias, no salidas repetidas.', 'orp-print' ),
+							esc_html( $warning['location'] ),
+							esc_html( $warning['printer'] )
+						);
+						?>
+					</p>
+				</div>
+			<?php endforeach; ?>
+		<?php endif; ?>
+
+		<?php if ( array() !== $empty_warnings ) : ?>
+			<div class="notice notice-info inline">
+				<p>
+					<?php
+					printf(
+						/* translators: %s: lista de nombres de local. */
+						esc_html__( 'Los locales %1$s no tienen ninguna salida activa: no se crearán trabajos para sus pedidos hasta que el agente reporte una salida.', 'orp-print' ),
+						esc_html( implode( ', ', $empty_warnings ) )
+					);
+					?>
+				</p>
+			</div>
+		<?php endif; ?>
+
+		<table class="widefat striped" style="max-width:1100px">
+			<thead>
+				<tr>
+					<th><?php esc_html_e( 'Local', 'orp-print' ); ?></th>
+					<th><?php esc_html_e( 'Rol', 'orp-print' ); ?></th>
+					<th><?php esc_html_e( 'Etiqueta', 'orp-print' ); ?></th>
+					<th><?php esc_html_e( 'Impresora', 'orp-print' ); ?></th>
+					<th><?php esc_html_e( 'Copias', 'orp-print' ); ?></th>
+					<th><?php esc_html_e( 'Estado', 'orp-print' ); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+				<?php if ( array() === $all ) : ?>
+					<tr><td colspan="6"><?php esc_html_e( 'Sin salidas todavía: el agente del TPV las registra al emparejarse y en cada heartbeat.', 'orp-print' ); ?></td></tr>
+				<?php else : ?>
+					<?php foreach ( $all as $destination ) : ?>
+						<tr>
+							<td>
+								<?php
+								$name = '';
+								foreach ( $locations as $location ) {
+									if ( (int) $location['id'] === (int) $destination->location_id ) {
+										$name = (string) $location['name'];
+										break;
+									}
+								}
+								echo esc_html( '' !== $name ? $name : sprintf( /* translators: %d: id de local. */ __( 'Local #%d (borrado)', 'orp-print' ), (int) $destination->location_id ) );
+								?>
+							</td>
+							<td><code><?php echo esc_html( (string) $destination->role ); ?></code></td>
+							<td><?php echo esc_html( (string) $destination->label ); ?></td>
+							<td><?php echo esc_html( (string) $destination->printer_name ); ?></td>
+							<td><?php echo esc_html( (string) $destination->copies ); ?></td>
+							<td><?php echo esc_html( 1 === (int) $destination->enabled ? __( 'Activa', 'orp-print' ) : __( 'Desactivada', 'orp-print' ) ); ?></td>
+						</tr>
+					<?php endforeach; ?>
+				<?php endif; ?>
+			</tbody>
+		</table>
 		<?php
 	}
 }

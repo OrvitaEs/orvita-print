@@ -153,6 +153,13 @@ final class SettingsPage {
 			LocationRepository::make_sole_default( $location_id );
 		}
 
+		// «Ninguno» (0): sincronía bidireccional completa (hallazgo del tester
+		// 2026-11-23) — limpia también el is_default huérfano que quedara en la
+		// tabla; el resolver lo seguía usando aunque la opción fuera 0.
+		if ( 0 === $location_id ) {
+			LocationRepository::clear_default();
+		}
+
 		add_settings_error(
 			'orp-settings',
 			'orp_settings_saved',

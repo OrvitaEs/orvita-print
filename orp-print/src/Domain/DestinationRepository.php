@@ -59,6 +59,13 @@ final class DestinationRepository {
 				Clock::now_sql()
 			)
 		);
+
+		// F1-06: una salida desactivada deja de generar trabajos nuevos y sus
+		// pendientes se cancelan (Doc/04 §2.8: «Si una salida está desactivada,
+		// no se crean trabajos para ella. Los trabajos ya pendientes se cancelan»).
+		if ( ! $enabled ) {
+			self::cancel_pending_for( $location_id, $role );
+		}
 	}
 
 	/** Salidas de un local. */
@@ -78,5 +85,62 @@ final class DestinationRepository {
 				$location_id
 			)
 		);
+	}
+
+	/**
+	 * Todas las salidas, agrupables por local (panel de destinos, F1-06).
+	 * Solo lectura: las salidas las reporta el agente en su heartbeat.
+	 */
+	public static function all(): array {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'orp_destinations';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		return (array) $wpdb->get_results(
+			"SELECT id, location_id, role, label, printer_name, copies, enabled, updated_at
+			   FROM {$table}
+			  ORDER BY location_id ASC, id ASC"
+		);
+	}
+
+	/**
+	 * Cancela los trabajos PENDIENTES de una salida (local + rol). Se llama al
+	 * desactivar la salida (Doc/04 §2.8); los trabajos ya claimed/delivered no
+	 * se tocan: un trabajo reclamado está en el agente y el papel no se desimprime.
+	 *
+	 * @return int Número de trabajos cancelados.
+	 */
+	public static function cancel_pending_for( int $location_id, string $role ): int {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'orp_jobs';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Tabla propia, sin caché.
+		$affected = $wpdb->query(
+			$wpdb->prepare(
+				"UPDATE {$table} SET status = 'cancelled'
+				  WHERE location_id = %d AND printer_role = %s AND status = 'pending'",
+				$location_id,
+				$role
+			)
+		);
+
+		if ( (int) $affected > 0 ) {
+			\Orvita\PrintBridge\Support\Logger::log(
+				'warning',
+				'jobs',
+				'Salida desactivada: trabajos pendientes cancelados, sin papel.',
+				null,
+				null,
+				array(
+					'location_id' => $location_id,
+					'role'        => $role,
+					'cancelados'  => (int) $affected,
+				)
+			);
+		}
+
+		return (int) $affected;
 	}
 }

@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Orvita\PrintBridge\Domain;
 
 use Orvita\PrintBridge\Support\Clock;
+use Orvita\PrintBridge\Support\Settings;
 
 // Si se llama directamente, salir.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -120,8 +121,20 @@ final class LocationRepository {
 		$fmt = array( '%s', '%s', '%d', '%d', '%s', '%d', '%s' );
 
 		if ( $id > 0 ) {
+			$before = self::get( $id );
+
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Tabla propia, sin caché.
 			$wpdb->update( $wpdb->prefix . 'orp_locations', $row, array( 'id' => $id ), $fmt, array( '%d' ) );
+
+			// Default único también en UPDATE (hallazgo del tester 2026-11-23):
+			// la misma lógica que en INSERT, con la sincronía de orp_settings.
+			if ( $is_default ) {
+				self::set_default( $id );
+			} elseif ( is_array( $before ) && 1 === (int) $before['is_default'] ) {
+				// El local DEJABA de ser el por defecto: sincroniza la opción
+				// (sincronía bidireccional, sin default huérfano).
+				self::clear_default();
+			}
 
 			return array( 'id' => $id );
 		}
@@ -134,15 +147,17 @@ final class LocationRepository {
 
 		$id = (int) $wpdb->insert_id;
 
-		// Solo hay un local por defecto: reajusta el resto si este lo es.
+		// Solo hay un local por defecto: reajusta el resto y sincroniza la opción.
 		if ( $is_default ) {
-			self::make_sole_default( $id );
+			self::set_default( $id );
 		}
 
 		return array( 'id' => $id );
 	}
 
-	/** Garantiza que solo este local tenga is_default = 1. */
+	/**
+	 * Garantiza que solo este local tenga is_default = 1.
+	 */
 	public static function make_sole_default( int $id ): void {
 		global $wpdb;
 
@@ -152,6 +167,31 @@ final class LocationRepository {
 		$wpdb->query(
 			$wpdb->prepare( "UPDATE {$table} SET is_default = CASE WHEN id = %d THEN 1 ELSE 0 END", $id )
 		);
+	}
+
+	/**
+	 * Limpia TODA la marca de por defecto (tabla y opción). Se usa al guardar
+	 * «Ninguno» como local por defecto (hallazgo del tester 2026-11-23): antes
+	 * solo se sincronizaba el id > 0 y quedaba un is_default huérfano en la
+	 * tabla que LocationResolver seguía usando.
+	 *
+	 * @return int Número de locales que perdieron la marca.
+	 */
+	public static function clear_default(): int {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'orp_locations';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Tabla propia, sin caché.
+		$affected = $wpdb->query( "UPDATE {$table} SET is_default = 0 WHERE is_default = 1" );
+
+		$settings = Settings::all();
+		if ( 0 !== (int) $settings['default_location_id'] ) {
+			$settings['default_location_id'] = 0;
+			update_option( Settings::OPTION, $settings, false );
+		}
+
+		return (int) $affected;
 	}
 
 	/** Marca un local como por defecto y sincroniza orp_settings.default_location_id. */

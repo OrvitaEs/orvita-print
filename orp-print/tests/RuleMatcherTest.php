@@ -248,10 +248,15 @@ final class RuleMatcherTest extends \WP_UnitTestCase {
 		$this->insert_location( 'local-a', 'A', 10, '[{"type":"city","operator":"in","values":["Madrid"]}]', 0 );
 		$id_default = $this->insert_location( 'local-b', 'B', 20, '[]', 1 );
 
-		// Transient limpio antes de la resolución.
+		// Transient limpio antes de la resolución. La creación del pedido ya
+		// dispara el trigger (F1-05), que resuelve y deja SU aviso de fallback:
+		// se limpia antes y después de crear el pedido para comprobar el aviso
+		// de esta llamada concreta.
 		delete_transient( 'orp_fallback_notice' );
 
-		$order    = $this->make_order( 'Sevilla' );
+		$order = $this->make_order( 'Sevilla' );
+		delete_transient( 'orp_fallback_notice' );
+
 		$resolved = LocationResolver::resolve_for_order( $order );
 
 		$this->assertInstanceOf( \stdClass::class, $resolved );

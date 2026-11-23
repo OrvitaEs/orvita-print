@@ -20,10 +20,9 @@ declare(strict_types=1);
 namespace Orvita\PrintBridge\Admin;
 
 use Orvita\PrintBridge\Domain\DestinationRepository;
-use Orvita\PrintBridge\Domain\JobFactory;
+use Orvita\PrintBridge\Domain\FanOut;
 use Orvita\PrintBridge\Domain\LocationResolver;
 use Orvita\PrintBridge\Support\Logger;
-use Orvita\PrintBridge\Template\DocumentBuilder;
 
 // Si se llama directamente, salir.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -151,32 +150,17 @@ final class OrderActions {
 		}
 
 		$user_id = (int) get_current_user_id();
-		$created = array();
 
-		foreach ( $destinations as $destination ) {
-			$document = DocumentBuilder::build_from_order(
-				$order,
-				array(
-					'order_id'      => $order_id,
-					'location_code' => (string) $location->code,
-					'copies'        => (int) $destination->copies,
-					'printer_role'  => (string) $destination->role,
-				)
-			);
-
-			$job_id = JobFactory::create_manual(
-				(int) $location->id,
-				$order_id,
-				(string) $destination->role,
-				(int) $destination->copies,
-				$document,
-				$user_id
-			);
-
-			if ( null !== $job_id ) {
-				$created[] = $job_id;
-			}
-		}
+		// Fan-out compartido con el disparo automático (F1-06): un trabajo por
+		// salida activa, copias congeladas, clave manual con timestamp y usuario.
+		$created = FanOut::create_jobs(
+			$order,
+			$location,
+			$destinations,
+			'manual',
+			true,
+			$user_id
+		);
 
 		// Nota en el pedido: el registro queda en la ficha, visible siempre.
 		$job_list = array() !== $created ? implode( ', ', $created ) : __( 'ninguno nuevo (idempotencia)', 'orp-print' );

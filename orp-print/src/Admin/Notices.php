@@ -42,25 +42,44 @@ final class Notices {
 
 		$entries = LocationResolver::take_fallback_notices();
 
-		if ( array() === $entries ) {
+		if ( array() !== $entries ) {
+			$order_ids = array_column( $entries, 'order_id' );
+			$codes     = array_unique( array_column( $entries, 'location_code' ) );
+
+			printf(
+				'<div class="notice notice-warning is-dismissible"><p><strong>%1$s</strong> ',
+				esc_html__( 'Orvita Print:', 'orp-print' )
+			);
+			printf(
+				/* translators: 1: lista de ids de pedido, 2: código del local por defecto. */
+				esc_html__(
+					'los pedidos %1$s no coinciden con ninguna regla de local y han ido al local por defecto (%2$s). Revisa las reglas de la pestaña «Locales y reglas» si este no es el comportamiento esperado.',
+					'orp-print'
+				),
+				esc_html( implode( ', ', array_map( 'strval', $order_ids ) ) ),
+				esc_html( implode( ', ', $codes ) )
+			);
+			echo '</p></div>';
+		}
+
+		// Pedidos que NO se encolaron por falta de local por defecto (F1-05).
+		$missing = LocationResolver::take_missing_default_notices();
+
+		if ( array() === $missing ) {
 			return;
 		}
 
-		$order_ids = array_column( $entries, 'order_id' );
-		$codes     = array_unique( array_column( $entries, 'location_code' ) );
-
 		printf(
-			'<div class="notice notice-warning is-dismissible"><p><strong>%1$s</strong> ',
+			'<div class="notice notice-error is-dismissible"><p><strong>%1$s</strong> ',
 			esc_html__( 'Orvita Print:', 'orp-print' )
 		);
 		printf(
-			/* translators: 1: lista de ids de pedido, 2: código del local por defecto. */
+			/* translators: %s: lista de ids de pedido. */
 			esc_html__(
-				'los pedidos %1$s no coinciden con ninguna regla de local y han ido al local por defecto (%2$s). Revisa las reglas de la pestaña «Locales y reglas» si este no es el comportamiento esperado.',
+				'los pedidos %s NO se han encolado: no hay local por defecto configurado y ninguna regla coincidía. Configura un local por defecto en Ajustes o revisa las reglas; mientras tanto esos pedidos no generan papel.',
 				'orp-print'
 			),
-			esc_html( implode( ', ', array_map( 'strval', $order_ids ) ) ),
-			esc_html( implode( ', ', $codes ) )
+			esc_html( implode( ', ', array_map( 'strval', array_column( $missing, 'order_id' ) ) ) )
 		);
 		echo '</p></div>';
 	}

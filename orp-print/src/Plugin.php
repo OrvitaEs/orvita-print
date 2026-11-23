@@ -60,6 +60,10 @@ final class Plugin {
 		Admin\OrderActions::register();
 		Admin\Notices::register();
 
+		// Disparo automático de trabajos desde el pedido (F1-05): creación,
+		// checkout clásico y de bloques, estados configurados y cancelación.
+		Domain\OrderTrigger::register();
+
 		// Comando de siembra para F0: `wp orp seed` (F0-08).
 		if ( defined( 'WP_CLI' ) && \WP_CLI ) {
 			\WP_CLI::add_command( 'orp seed', array( Cli\SeedCommand::class, 'run' ) );

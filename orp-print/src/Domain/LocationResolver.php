@@ -30,6 +30,9 @@ final class LocationResolver {
 	/** Transient que guarda los avisos de caída al local por defecto. */
 	private const FALLBACK_TRANSIENT = 'orp_fallback_notice';
 
+	/** Transient de avisos de pedidos sin local por defecto (F1-05: nunca en silencio). */
+	private const MISSING_DEFAULT_TRANSIENT = 'orp_missing_default_notice';
+
 	/** Local por id (row de BD). */
 	public static function get( int $id ): ?object {
 		global $wpdb;
@@ -103,7 +106,8 @@ final class LocationResolver {
 		if ( null !== $fallback ) {
 			self::record_fallback( $order, $fallback );
 		} else {
-			// Sin local por defecto: queda registrado, el pedido no se pierde en silencio.
+			// Sin local por defecto: queda registrado Y avisado, el pedido no
+			// se pierde en silencio (F1-05: log + aviso en el panel).
 			\Orvita\PrintBridge\Support\Logger::log(
 				'warning',
 				'locations',
@@ -112,9 +116,48 @@ final class LocationResolver {
 				null,
 				array( 'order_id' => $order->get_id() )
 			);
+
+			self::record_missing_default( $order );
 		}
 
 		return $fallback;
+	}
+
+	/** Deja el aviso de pedidos que no se encolaron por falta de local por defecto. */
+	private static function record_missing_default( \WC_Order $order ): void {
+		$entries = get_transient( self::MISSING_DEFAULT_TRANSIENT );
+		if ( ! is_array( $entries ) ) {
+			$entries = array();
+		}
+
+		// Un pedido entra UNA vez en la cola (el disparo puede resolver varias veces).
+		$order_id = $order->get_id();
+		foreach ( $entries as $entry ) {
+			if ( (int) ( $entry['order_id'] ?? 0 ) === $order_id ) {
+				return;
+			}
+		}
+
+		$entries[] = array(
+			'order_id' => $order_id,
+			'time'     => time(),
+		);
+
+		// Máximo 5 avisos en cola para no crecer sin control.
+		set_transient( self::MISSING_DEFAULT_TRANSIENT, array_slice( $entries, -5, 5, true ), HOUR_IN_SECONDS );
+	}
+
+	/** Avisos de falta de local por defecto pendientes de mostrar (se consumen una vez). */
+	public static function take_missing_default_notices(): array {
+		$entries = get_transient( self::MISSING_DEFAULT_TRANSIENT );
+
+		if ( ! is_array( $entries ) || array() === $entries ) {
+			return array();
+		}
+
+		delete_transient( self::MISSING_DEFAULT_TRANSIENT );
+
+		return $entries;
 	}
 
 	/** Deja el aviso de caída al local por defecto (se muestra en admin_notices). */
@@ -124,8 +167,18 @@ final class LocationResolver {
 			$entries = array();
 		}
 
+		// Un pedido entra UNA vez en la cola de avisos: el mismo pedido se
+		// resuelve varias veces (creación + cambios de estado) y el aviso no
+		// debe multiplicarse.
+		$order_id = $order->get_id();
+		foreach ( $entries as $entry ) {
+			if ( (int) ( $entry['order_id'] ?? 0 ) === $order_id ) {
+				return;
+			}
+		}
+
 		$entries[] = array(
-			'order_id'      => $order->get_id(),
+			'order_id'      => $order_id,
 			'location_code' => (string) $location->code,
 			'time'          => time(),
 		);
