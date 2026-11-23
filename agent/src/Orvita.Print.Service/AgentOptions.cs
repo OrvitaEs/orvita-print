@@ -15,8 +15,9 @@ public sealed class ServerOptions
 
 /// <summary>
 /// Configuración bootstrap del servicio (Doc/03 §6.2.1, capa «estática»): SOLO infraestructura
-/// — rutas, log, intervalos de respaldo y, mientras no exista el almacén F2-10, la URL/token de
-/// desarrollo y las salidas. Nada de esto es configurable del documento: eso llega por
+/// — rutas, log, intervalos de respaldo y, como comodín de DESARROLLO, la URL/token directos
+/// (<c>--server/--token</c>). Todo lo gestionable vive en el almacén local SQLite (F2-10):
+/// ServerUrl, token DPAPI y salidas; la configuración del documento llega por
 /// <c>GET /config</c> (Doc/04 §5.8) y vive en <see cref="RemoteConfigState"/>.
 /// </summary>
 public sealed class AgentOptions
@@ -42,9 +43,6 @@ public sealed class AgentOptions
     public int TransientRetryDelaySeconds { get; set; } = 2;
 
     public ServerOptions Server { get; set; } = new();
-
-    /// <summary>Salidas del agente (Doc/03 §6.7). F2-10 las moverá a SQLite vía CLI.</summary>
-    public List<DestinationOptions> Destinations { get; set; } = [];
 
     /// <summary>Resuelve el directorio de datos a ruta absoluta.</summary>
     public string ResolveDataDirectory()

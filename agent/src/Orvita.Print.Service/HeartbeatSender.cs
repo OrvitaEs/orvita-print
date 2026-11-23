@@ -27,6 +27,7 @@ public sealed class HeartbeatSender
     private readonly OutboxRepository _outbox;
     private readonly IDestinationProvider _destinations;
     private readonly RemoteConfigState _configState;
+    private readonly AgentRuntimeStatus? _runtime;
     private readonly ILogger _logger;
 
     public HeartbeatSender(
@@ -34,20 +35,38 @@ public sealed class HeartbeatSender
         OutboxRepository outbox,
         IDestinationProvider destinations,
         RemoteConfigState configState,
-        ILogger? logger = null)
+        ILogger? logger = null,
+        AgentRuntimeStatus? runtime = null)
     {
         _server = server ?? throw new ArgumentNullException(nameof(server));
         _outbox = outbox ?? throw new ArgumentNullException(nameof(outbox));
         _destinations = destinations ?? throw new ArgumentNullException(nameof(destinations));
         _configState = configState ?? throw new ArgumentNullException(nameof(configState));
         _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
+        _runtime = runtime;
     }
 
     /// <summary>
     /// Un latido. Devuelve la config_version aplicada (null si el servidor no la informó).
     /// Las excepciones de transporte se propagan: quien llama decide (el worker solo registra).
+    /// Registra en <see cref="AgentRuntimeStatus"/> el «última vez visto por el servidor» (Doc/03 §11).
     /// </summary>
     public async Task<long?> SendOnceAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var version = await SendOnceCoreAsync(cancellationToken).ConfigureAwait(false);
+            _runtime?.MarkHeartbeatSuccess();
+            return version;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _runtime?.RecordHeartbeatError(ex.Message);
+            throw;
+        }
+    }
+
+    private async Task<long?> SendOnceCoreAsync(CancellationToken cancellationToken)
     {
         var server = _server();
         var request = new HeartbeatRequest

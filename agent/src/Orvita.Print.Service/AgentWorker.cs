@@ -9,42 +9,49 @@ namespace Orvita.Print.Service;
 /// Orquestador del agente (ADR-09: servicio headless autónomo). Al arrancar:
 /// 1. recupera la cola (trabajos <c>printing</c> de una caída → reimpresión marcada
 ///    <c>duplicate_suspected</c>, Doc/03 §6.4) y drena lo pendiente;
-/// 2. envía el heartbeat inicial (reporta destinos, Doc/03 §6.2.1);
-/// 3. arranca el Poller (10 s ± jitter, Doc/03 §6.3).
+/// 2. si está emparejado, envía el heartbeat inicial y arranca el poller;
+/// 3. si NO está emparejado, avisa y queda VIVO esperando a la pipe de gestión (F2-08):
+///    <c>orvitaprint pair</c> lo despierta y arranca heartbeat + poller sin reiniciar.
 /// Después: heartbeat cada 60 s (Doc/04 §5.3) con re-sincronización cuando cambia
-/// <c>config_version</c>, reiniciando el poller si el servidor cambia el intervalo de poll.
-/// La pipe de gestión llega en F2-08; sin ella el servicio ya imprime solo.
+/// <c>config_version</c>, reiniciando el poller si el intervalo cambia. Un re-pair por la
+/// pipe reinicia el poller con el transporte nuevo y lanza un latido inmediato.
 /// </summary>
 public sealed class AgentWorker : BackgroundService
 {
     private readonly ServerConnection _connection;
-    private readonly Func<ITransport> _serverAccessor;
+    private readonly PairingWaiter _pairing;
+    private readonly PairingService _pairingService;
+    private readonly PollerController _poller;
     private readonly OutboxRepository _outbox;
     private readonly JobProcessor _processor;
     private readonly HeartbeatSender _heartbeat;
     private readonly RemoteConfigState _configState;
+    private readonly AgentRuntimeStatus _runtime;
     private readonly AgentOptions _options;
     private readonly ILogger<AgentWorker> _logger;
 
-    private CancellationTokenSource? _pollerCts;
-    private Task? _pollerTask;
-
     public AgentWorker(
         ServerConnection connection,
-        Func<ITransport> serverAccessor,
+        PairingWaiter pairing,
+        PairingService pairingService,
+        PollerController poller,
         OutboxRepository outbox,
         JobProcessor processor,
         HeartbeatSender heartbeat,
         RemoteConfigState configState,
+        AgentRuntimeStatus runtime,
         AgentOptions options,
         ILogger<AgentWorker> logger)
     {
         _connection = connection;
-        _serverAccessor = serverAccessor;
+        _pairing = pairing;
+        _pairingService = pairingService;
+        _poller = poller;
         _outbox = outbox;
         _processor = processor;
         _heartbeat = heartbeat;
         _configState = configState;
+        _runtime = runtime;
         _options = options;
         _logger = logger;
     }
@@ -67,65 +74,45 @@ public sealed class AgentWorker : BackgroundService
 
             await _processor.ProcessStartupQueueAsync(stoppingToken).ConfigureAwait(false);
 
-            // 2. Sin emparejar: estado visible y sin derribo (la pipe de gestión, F2-08, permitirá emparejar en caliente).
-            if (_connection.Transport is null)
+            // 2. Sin emparejar por args: se intenta cargar el emparejamiento del almacén local
+            //    (F2-10: reinicios y cortes de luz no obligan a reemparejar). Si no hay o el token
+            //    no descifra, aviso visible y servicio vivo hasta que la pipe aplique un pair.
+            //    Bucle con verificación: una señal residual del waiter no abre la puerta sin pair real.
+            while (_connection.Transport is null)
             {
+                if (_pairingService.TryLoadPairingFromStore())
+                {
+                    break;
+                }
+
                 _logger.LogWarning(
-                    "Agente sin emparejar: falta ServerUrl o token. En producción usa «orvitaprint pair --server https://… <código>» " +
-                    "(la URL y el token viven cifrados en el almacén local, F2-10). El poller y el heartbeat no arrancan.");
-                await Task.Delay(Timeout.Infinite, stoppingToken).ConfigureAwait(false);
-                return;
+                    "Agente sin emparejar: falta ServerUrl o token. Empareja con «orvitaprint pair --server https://… <código>» " +
+                    "desde otro terminal: el servicio arrancará el poller sin reiniciar (la URL y el token viven cifrados " +
+                    "en el almacén local, F2-10/S-01). El poller y el heartbeat no arrancan hasta entonces.");
+                await _pairing.WaitForPairAsync(stoppingToken).ConfigureAwait(false);
+                _logger.LogInformation("Emparejamiento recibido por la pipe de gestión; arrancando heartbeat y poller.");
             }
 
             // 3. Heartbeat inicial: reporta destinos y sincroniza la configuración remota.
-            try
-            {
-                await _heartbeat.SendOnceAsync(stoppingToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                return;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning("El heartbeat inicial falló: {Message}. Se reintentará en el próximo latido.", ex.Message);
-            }
+            await SendHeartbeatSafelyAsync(stoppingToken).ConfigureAwait(false);
 
             // 4. Poller (Doc/03 §6.3): fetch → claim → imprimir → ack, con jitter y backoff.
-            StartPoller(stoppingToken);
+            _poller.Start(stoppingToken);
 
-            // 5. Latidos cada 60 s (Doc/04 §5.3).
+            // 5. Re-pair por la pipe (worker en marcha): poller nuevo con el transporte nuevo + latido ya.
+            _pairing.PairApplied += OnPairApplied;
+
+            // 6. Latidos cada 60 s (Doc/04 §5.3).
             var interval = TimeSpan.FromSeconds(Math.Max(1, _options.HeartbeatIntervalSeconds));
             using var timer = new PeriodicTimer(interval);
             while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false))
             {
-                var previousPollInterval = _configState.PollIntervalSeconds ?? _options.PollIntervalSeconds;
-                try
+                var previousPollInterval = ResolvePollInterval();
+                await SendHeartbeatSafelyAsync(stoppingToken).ConfigureAwait(false);
+                if (ResolvePollInterval() != previousPollInterval)
                 {
-                    await _heartbeat.SendOnceAsync(stoppingToken).ConfigureAwait(false);
-                }
-                catch (TransportUnauthorizedException ex)
-                {
-                    _logger.LogError(
-                        "El token del agente es inválido o fue revocado ({Message}). Reempareja el agente: orvitaprint pair. " +
-                        "El poller ya está detenido; el servicio sigue vivo para poder emparejar de nuevo.",
-                        ex.Message);
-                }
-                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-                {
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning("El heartbeat falló: {Message}", ex.Message);
-                }
-
-                var newPollInterval = _configState.PollIntervalSeconds ?? _options.PollIntervalSeconds;
-                if (newPollInterval != previousPollInterval && newPollInterval > 0)
-                {
-                    _logger.LogInformation("El servidor cambió el intervalo de poll a {Seconds} s; se reinicia el poller.", newPollInterval);
-                    await StopPollerAsync().ConfigureAwait(false);
-                    StartPoller(stoppingToken);
+                    _logger.LogInformation("El intervalo de poll cambió a {Seconds} s; se reinicia el poller.", ResolvePollInterval());
+                    await _poller.RestartAsync(stoppingToken).ConfigureAwait(false);
                 }
             }
         }
@@ -135,62 +122,53 @@ public sealed class AgentWorker : BackgroundService
         }
         finally
         {
-            await StopPollerAsync().ConfigureAwait(false);
+            _pairing.PairApplied -= OnPairApplied;
+            await _poller.StopAsync().ConfigureAwait(false);
             _logger.LogInformation("Agente Orvita Print detenido limpiamente.");
         }
     }
 
-    private void StartPoller(CancellationToken stoppingToken)
+    private int ResolvePollInterval() =>
+        _configState.PollIntervalSeconds ?? _runtime.PairPollIntervalSeconds ?? _options.PollIntervalSeconds;
+
+    /// <summary>Re-pair con el worker en marcha: reinicia el poller (transporte nuevo) y lanza un latido inmediato.</summary>
+    private void OnPairApplied()
     {
-        var interval = _configState.PollIntervalSeconds ?? _options.PollIntervalSeconds;
-
-        var poller = new Poller(
-            _serverAccessor(), // el mismo servidor que el procesador (inyectable en pruebas)
-            new PollerOptions { BaseInterval = TimeSpan.FromSeconds(Math.Max(1, interval)) },
-            log: message => _logger.LogInformation("{Message}", message));
-
-        _pollerCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-        _pollerTask = poller.RunAsync(
-            (job, ct) => _processor.ProcessJobAsync(job, ct),
-            _pollerCts.Token).ContinueWith(
-            t =>
-            {
-                if (t.IsFaulted)
-                {
-                    _logger.LogError(t.Exception, "El poller murió de forma inesperada.");
-                }
-                else if (poller.State == PollerState.StoppedUnauthorized)
-                {
-                    _logger.LogError("El poller está detenido: token inválido o revocado (401). Reempareja el agente.");
-                }
-            },
-            CancellationToken.None,
-            TaskContinuationOptions.ExecuteSynchronously,
-            TaskScheduler.Default);
-    }
-
-    private async Task StopPollerAsync()
-    {
-        if (_pollerCts is null)
-        {
-            return;
-        }
-
-        await _pollerCts.CancelAsync().ConfigureAwait(false);
-        if (_pollerTask is { } task)
+        _ = Task.Run(async () =>
         {
             try
             {
-                await task.ConfigureAwait(false);
+                _logger.LogInformation("Re-emparejamiento aplicado: reiniciando poller con el transporte nuevo.");
+                await _poller.RestartAsync(CancellationToken.None).ConfigureAwait(false);
+                await SendHeartbeatSafelyAsync(CancellationToken.None).ConfigureAwait(false);
             }
-            catch (OperationCanceledException)
+            catch (Exception ex)
             {
-                // Parada esperada.
+                _logger.LogWarning("El reinicio tras re-emparejamiento falló: {Message}", ex.Message);
             }
-        }
+        });
+    }
 
-        _pollerCts.Dispose();
-        _pollerCts = null;
-        _pollerTask = null;
+    private async Task SendHeartbeatSafelyAsync(CancellationToken stoppingToken)
+    {
+        try
+        {
+            await _heartbeat.SendOnceAsync(stoppingToken).ConfigureAwait(false);
+        }
+        catch (TransportUnauthorizedException ex)
+        {
+            _logger.LogError(
+                "El token del agente es inválido o fue revocado ({Message}). Reempareja el agente: orvitaprint pair. " +
+                "El poller queda detenido; el servicio sigue vivo para poder emparejar de nuevo.",
+                ex.Message);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            throw; // parada real: que la vea el bucle principal
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("El heartbeat falló: {Message}", ex.Message);
+        }
     }
 }

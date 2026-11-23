@@ -52,9 +52,28 @@ public static class AgentHostBuilder
 
         // ------------------------------------------------------ DI (cableado del agente)
         builder.Services.AddSingleton(options);
+        builder.Services.AddSingleton<AgentRuntimeStatus>();
+        builder.Services.AddSingleton<PairingWaiter>();
         builder.Services.AddSingleton<ServerConnection>();
         builder.Services.AddSingleton<RemoteConfigState>();
-        builder.Services.AddSingleton<IDestinationProvider, ConfigDestinationProvider>();
+
+        // Almacén local F2-10: MISMA BD que la cola (un fichero, un respaldo), tablas propias.
+        builder.Services.AddSingleton(sp =>
+        {
+            var store = new LocalConfigStore(Path.Combine(options.ResolveDataDirectory(), "outbox.db"))
+            {
+                Log = message => sp.GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("Orvita.Print.Core.LocalConfigStore")
+                    .LogInformation("{Message}", message),
+            };
+            return store;
+        });
+
+        // S-01: DPAPI (LocalMachine + entropía fija) — el único punto que conoce ProtectedData.
+        builder.Services.AddSingleton<ISecretProtector, DpapiSecretProtector>();
+
+        // F2-10: las salidas viven en el almacén local (sustituye a la lectura de appsettings).
+        builder.Services.AddSingleton<IDestinationProvider, StoreDestinationProvider>();
         builder.Services.AddSingleton<IPrinterEnumerator, WindowsPrinterEnumerator>();
         builder.Services.AddSingleton<IPrintTransportFactory, WindowsPrintTransportFactory>();
         builder.Services.AddSingleton<IPngDecoder, PngDecoder>();
@@ -103,8 +122,22 @@ public static class AgentHostBuilder
             sp.GetRequiredService<OutboxRepository>(),
             sp.GetRequiredService<IDestinationProvider>(),
             sp.GetRequiredService<RemoteConfigState>(),
-            sp.GetRequiredService<ILogger<HeartbeatSender>>()));
+            sp.GetRequiredService<ILogger<HeartbeatSender>>(),
+            sp.GetRequiredService<AgentRuntimeStatus>()));
         builder.Services.AddSingleton<TestPrintService>();
+
+        // F2-08: emparejamiento por pipe + dueño del poller (re-pair/reinicio sin tirar el proceso).
+        builder.Services.AddSingleton<PairingService>();
+        builder.Services.AddSingleton(sp => new PollerController(
+            sp.GetRequiredService<Func<ITransport>>(),
+            sp.GetRequiredService<JobProcessor>(),
+            intervalSeconds: () => sp.GetRequiredService<RemoteConfigState>().PollIntervalSeconds
+                ?? sp.GetRequiredService<AgentRuntimeStatus>().PairPollIntervalSeconds
+                ?? sp.GetRequiredService<AgentOptions>().PollIntervalSeconds,
+            logger: sp.GetRequiredService<ILogger<PollerController>>()));
+        builder.Services.AddSingleton<ManagementRequestHandler>();
+        builder.Services.AddHostedService<ManagementPipeServer>();
+
         builder.Services.AddHostedService<AgentWorker>();
         builder.Services.AddWindowsService(windowsServiceOptions =>
         {

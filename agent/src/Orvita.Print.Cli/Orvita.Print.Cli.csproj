@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <Description>CLI orvitaprint (F2-09, ADR-13): cliente de la pipe de gestión del servicio Orvita Print — pair, destination, status, test, doctor. El CLI NO lee el almacén local: todo pasa por la pipe.</Description>
+    <Version>1.0.0-dev</Version>
+    <RootNamespace>Orvita.Print.Cli</RootNamespace>
+    <!-- El comando instalado se llamará orvitaprint (la GUI futura será otro cliente de la misma pipe). -->
+    <AssemblyName>orvitaprint</AssemblyName>
+    <!-- net10.0-windows: la pipe de gestión y DPAPI son Windows en V1 (ADR-12, V1 solo Windows). -->
+    <TargetFramework>net10.0-windows</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Orvita.Print.Core\Orvita.Print.Core.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -322,6 +322,30 @@ public sealed class OutboxRepository : IDisposable
         return command.ExecuteNonQuery() > 0;
     }
 
+    /// <summary>Número de trabajos en un estado. Para <c>status</c>/<c>doctor</c> sin traer documentos.</summary>
+    public int CountByState(OutboxJobState state)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(1) FROM outbox_jobs WHERE state = $state;";
+        command.Parameters.AddWithValue("$state", ToDb(state));
+        return (int)Convert.ToInt64(command.ExecuteScalar());
+    }
+
+    /// <summary>El trabajo actualizado más recientemente (cualquier estado); null si la cola está vacía.</summary>
+    public OutboxJob? GetLatestJob()
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT job_id, printer_role, copies, document_json, state, attempts, duplicate_suspected,
+                   error_code, error_message, created_at, updated_at, printed_at
+            FROM outbox_jobs ORDER BY updated_at DESC, job_id DESC LIMIT 1;
+            """;
+        using var reader = command.ExecuteReader();
+        return reader.Read() ? MapJob(reader) : null;
+    }
+
     /// <summary>Trabajo por id, o null si no está en la cola.</summary>
     public OutboxJob? Get(long jobId)
     {
