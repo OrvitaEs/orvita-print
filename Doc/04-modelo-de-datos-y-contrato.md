@@ -52,6 +52,8 @@ CREATE TABLE {prefix}orp_locations (
 Tipos admitidos: `city`, `postcode`, `shipping_method`, `product_category`, `order_meta`.
 Operadores: `in`, `equals`, `contains`, `prefix`, `exists`.
 
+**Semántica ratificada:** un local coincide cuando **todas** sus reglas se cumplen (AND); el primer local que coincide por prioridad gana. Para `order_meta`, `values[0]` es la clave del meta (o un campo opcional `key`): `{"type": "order_meta", "operator": "in", "values": ["_shipping_zona", "Zona Norte"]}`.
+
 **Orden recomendado de reglas:**
 
 | Prioridad | Regla | Cuándo |
@@ -214,6 +216,7 @@ Retención: 30 días. Sin datos personales.
 
 | Clave | Valores | Por defecto |
 |---|---|---|
+| `preset` | `aviso` \| `completo` \| `cocina_cliente` \| `personalizado` | `aviso` |
 | `trigger_states` | `["created"]` o estados concretos (`processing`, `on-hold`…) | `["created"]` |
 | `dedupe_scope` | `order` \| `trigger` | `order` |
 | `paper_width_mm` | 58 \| 80 | 80 |
@@ -513,7 +516,7 @@ El agente reporta además códigos propios en `ack`, como `orp_printer_not_found
 | `items` | `columns[]`, `rows[][]`, `align[]` | Tabla de productos |
 | `totals` | `items[] {label, value, bold}` | Subtotal, envío, total |
 | `divider` | `char` | Por defecto `-` |
-| `image` | `data` (base64), `width_dots` | Logo; máximo 384 px de ancho |
+| `image` | `data` (base64), `width_dots` | Logo; **PNG base64**, decodificado en el agente con .NET puro (sin System.Drawing); máximo 384 px de ancho |
 | `qr` | `value`, `size` | |
 | `barcode` | `value`, `symbology` | `CODE128`, `EAN13` |
 | `feed` | `lines` | Avance de papel |
