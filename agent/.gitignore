@@ -10,3 +10,8 @@ obj/
 orvita-release-keys/
 license.dat
 latest.json
+
+# Artefactos de build del instalador (F3-01): el MSI y la cosecha se regeneran con build.ps1.
+installer/publish/
+installer/artifacts/*.msi
+installer/PublishedFiles.wxs

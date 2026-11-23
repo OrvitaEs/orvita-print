@@ -208,6 +208,9 @@ public static class AgentHostBuilder
                 case "--data-dir" when i + 1 < args.Length:
                     options.DataDirectory = args[++i];
                     break;
+                case "--data-dir":
+                    // Sin valor (p. ej. el MSI con la property ORVDATA vacía): usar el defecto.
+                    break;
                 case "--console":
                     // Marcador inofensivo, documentado para lanzar en consola de forma explícita.
                     break;

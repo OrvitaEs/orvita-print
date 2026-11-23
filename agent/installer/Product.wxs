@@ -1,0 +1,119 @@
+<!--
+  Instalador MSI de Orvita Print (F3-01, Doc/03 §9).
+
+  - Instalación POR MÁQUINA (Scope perMachine) en Archivos de programa: binarios del servicio
+    self-contained win-x64 en service\ y del CLI (orvitaprint) en cli\.
+  - Registra el SERVICIO WINDOWS con arranque automático (ServiceInstall start=auto + inicio
+    retardado) y lo para/elimina en desinstalación y major-upgrade (ServiceControl).
+  - %ProgramData%\OrvitaPrint (datos: outbox.db, token DPAPI, license.dat, logs): se crea con
+    ACL restrictiva — SYSTEM y Administradores control total, Usuarios SOLO lectura — los
+    usuarios normales NO tocan el token (S-01). El componente NO es permanente: Windows
+    Installer solo borra el directorio si queda VACÍO, así que al desinstalar SE CONSERVA
+    outbox.db/config/licencia (reinstalar no pierde el emparejamiento, decisión ratificada).
+  - UpgradeCode ESTABLE y ProductCode por versión (MajorUpgrade: desinstala la anterior).
+  - Property pública ORVDATA: `msiexec /i ... ORVDATA="D:\Datos"` reubica el directorio de
+    datos del servicio (se reenvía al ejecutable como argumento de datos). Vacía → %ProgramData%\OrvitaPrint.
+  - Sin firma de código en V1 (Doc/03 §9): SmartScreen avisará; se publica el SHA-256 del MSI
+    junto a la descarga (install/checksum.txt) y la guía documenta el aviso.
+  - Icono: PLACEHOLDER V1 — sin .ico propio; Añadir/Quitar programas muestra el genérico
+    (F4 añadirá la identidad visual).
+
+  Se compila con build.ps1 (publica self-contained, cosecha los ficheros y llama a wix build).
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+  <Package
+      Name="Orvita Print"
+      Manufacturer="Orvita"
+      Version="$(var.ProductVersion)"
+      UpgradeCode="519ECC20-2386-49CC-B578-41E8F13E5141"
+      Scope="perMachine"
+      Compressed="yes"
+      Language="3082"
+      InstallerVersion="500">
+
+    <!-- Major-upgrade: instalar una versión nueva desinstala la anterior (UpgradeCode estable). -->
+    <MajorUpgrade
+        DowngradeErrorMessage="Ya hay instalada una versión más reciente de Orvita Print. Desinstálala primero si de verdad quieres volver atrás (se conservan los datos de %ProgramData%\OrvitaPrint)." />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- Escape hatch (Doc/03 §9): directorio de datos alternativo. Uso: msiexec /i orvitaprint.msi ORVDATA="D:\Datos" -->
+    <Property Id="ORVDATA" Secure="yes" />
+
+    <!-- ============================================================ Archivos de programa -->
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="InstallFolder" Name="Orvita Print">
+
+        <!-- Servicio: el ejecutable va A PARTE de la cosecha porque su componente registra el servicio. -->
+        <Directory Id="ServiceFolder" Name="service">
+          <Component Id="ServiceExe">
+            <File Id="ServiceExeFile" Name="Orvita.Print.Service.exe"
+                  Source="$(var.ServicePublish)\Orvita.Print.Service.exe" KeyPath="yes" />
+
+            <!-- Servicio de Windows, arranque AUTOMÁTICO (LocalSystem). Nota: el inicio
+                 retardado (ServiceConfig core) está desaconsejado por el propio Windows
+                 Installer SDK; start=auto cumple Doc/03 §9 tal cual. -->
+            <ServiceInstall
+                Id="OrvitaPrintService"
+                Name="OrvitaPrint"
+                DisplayName="Orvita Print Agent"
+                Description="Agente de impresión térmica de Orvita Print (WooCommerce). Se gestiona con el comando orvitaprint (pair, destination, status, test, doctor)."
+                Start="auto"
+                Type="ownProcess"
+                ErrorControl="normal"
+                Arguments="--data-dir [ORVDATA]"
+                Vital="yes" />
+
+            <!-- Arranca al instalar/actualizar; para y ELIMINA el registro en desinstalación. -->
+            <ServiceControl
+                Id="OrvitaPrintServiceControl"
+                Name="OrvitaPrint"
+                Start="install"
+                Stop="both"
+                Remove="uninstall"
+                Wait="yes" />
+          </Component>
+        </Directory>
+
+        <!-- CLI: orvitaprint (cliente de la pipe de gestión). -->
+        <Directory Id="CliFolder" Name="cli">
+          <Component Id="CliPathEnvironment">
+            <!-- orvitaprint en el PATH de la máquina: nueva sesión de consola para verlo. -->
+            <RegistryValue Root="HKLM" Key="Software\Orvita\OrvitaPrint" Name="CliPathInstalled"
+                           Type="integer" Value="1" KeyPath="yes" />
+            <Environment Id="MachinePath" Name="PATH" Value="[InstallFolder]cli" Part="last" Action="set" System="yes" />
+          </Component>
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+
+    <!-- ==================================================================== Datos (ProgramData) -->
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="DataFolder" Name="OrvitaPrint">
+        <Component Id="DataFolderPermissions" Permanent="no">
+          <CreateFolder>
+            <!-- S-01: el servicio (LocalSystem) lee/escribe; Administradores gestionan; los
+                 usuarios normales SOLO pueden leer (no tocar el token ni la cola). -->
+            <Permission User="SYSTEM" GenericAll="yes" />
+            <Permission User="Administrators" GenericAll="yes" />
+            <Permission User="Users" GenericRead="yes" GenericExecute="yes" />
+          </CreateFolder>
+          <!-- Componente sin ficheros: el directorio se borra en desinstalación SOLO si quedó
+               vacío; con outbox.db/license.dat/logs se conserva (reinstalar no re-empareja). -->
+          <RegistryValue Root="HKLM" Key="Software\Orvita\OrvitaPrint" Name="DataFolderInstalled"
+                         Type="integer" Value="1" KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="Orvita Print" Level="1">
+      <ComponentRef Id="ServiceExe" />
+      <ComponentGroupRef Id="ServiceFiles" />
+      <ComponentRef Id="CliPathEnvironment" />
+      <ComponentGroupRef Id="CliFiles" />
+      <ComponentRef Id="DataFolderPermissions" />
+    </Feature>
+
+  </Package>
+</Wix>

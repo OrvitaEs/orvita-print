@@ -327,7 +327,10 @@ public static class CliApp
             await output.WriteLineAsync($"Último error de impresión: {lastPrintError}").ConfigureAwait(false);
         }
 
-        await PrintLicenseAsync(data, output, indent: string.Empty).ConfigureAwait(false);
+        if (data.TryGetProperty("license", out var statusLicense) && statusLicense.ValueKind == JsonValueKind.Object)
+        {
+            await PrintLicenseAsync(statusLicense, output, indent: string.Empty).ConfigureAwait(false);
+        }
 
         var destinations = data.TryGetProperty("destinations", out var ds) && ds.ValueKind == JsonValueKind.Array
             ? ds.EnumerateArray().ToList()

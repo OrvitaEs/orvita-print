@@ -25,4 +25,10 @@
     <ProjectReference Include="..\Orvita.Print.Printing.Windows\Orvita.Print.Printing.Windows.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Bootstrap (Doc/03 §6.2.1): appsettings viaja en el MSI (F3-01) junto al ejecutable.
+         Los SECRETS nunca viven aquí (S-01: token DPAPI en SQLite; solo infra: log, canal de update). -->
+    <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
