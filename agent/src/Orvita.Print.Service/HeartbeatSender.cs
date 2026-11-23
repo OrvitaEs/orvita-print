@@ -107,12 +107,6 @@ public sealed class HeartbeatSender
         return _configState.ConfigVersion;
     }
 
-    private static DestinationInfo ToDestinationInfo(DestinationOptions destination) => new()
-    {
-        Role = destination.Role,
-        Label = destination.Label,
-        PrinterName = destination.PrinterName,
-        Copies = destination.Copies,
-        Enabled = destination.Enabled,
-    };
+    private DestinationInfo ToDestinationInfo(DestinationOptions destination) =>
+        DestinationWire.From(destination, warn => _logger.LogWarning("{Message}", warn));
 }

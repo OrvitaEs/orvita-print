@@ -154,6 +154,17 @@ public sealed class Poller
                     State = PollerState.Backoff;
                     LogMessage($"Error del servidor ({ex.StatusCode}): reintento en {Format(wait)}.");
                 }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    // Respuesta 200 con cuerpo no contractual (p. ej. un notice de PHP delante
+                    // del JSON) o cualquier fallo inesperado de la ronda: NO mata el poller.
+                    // Antes la tarea del poller moría aquí para siempre (silencio total); ahora
+                    // queda en backoff y reintenta como un error de red (incidente 2026-11-23).
+                    wait = backoff;
+                    backoff = EscalateBackoff(backoff);
+                    State = PollerState.Backoff;
+                    LogMessage($"Error inesperado en la ronda del poller: {ex.Message} Reintento en {Format(wait)}.");
+                }
 
                 await _delayAsync(wait, cancellationToken).ConfigureAwait(false);
             }

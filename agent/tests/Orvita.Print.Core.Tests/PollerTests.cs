@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using Orvita.Print.Contracts;
 using Orvita.Print.Core;
 using Xunit;
@@ -321,5 +322,31 @@ public sealed class PollerTests
 
         Assert.Equal(PollerState.Stopped, poller.State);
         Assert.Single(waits);
+    }
+
+    // ---------------------------------------------------------------- incidente 2026-11-23
+
+    [Fact]
+    public async Task Una_respuesta_200_malformada_no_mata_el_poller_hace_backoff_y_recupera()
+    {
+        // Incidente 2026-11-23 (defecto A, capa poller): un 200 con cuerpo no contractual
+        // (p. ej. un notice de PHP delante del JSON) lanzaba JsonException SIN capturar y la
+        // tarea del poller moría para siempre: silencio total, sin log de error del poller.
+        // Ahora: backoff + reintento, el poller se recupera solo.
+        var transport = new FakeTransport();
+        transport.Enqueue(new JsonException("respuesta 200 con un notice de PHP delante del JSON")); // ronda 1: malformada
+        transport.Enqueue(new JobBatch { Jobs = [], Cursor = 7 }); // ronda 2: el servidor se recupera
+
+        var cts = new CancellationTokenSource();
+        var (delay, waits) = RecordingDelay(stopAfter: 2, cts);
+        var poller = new Poller(transport, Options(), delayAsync: delay);
+
+        await poller.RunAsync((_, _) => Task.CompletedTask, cts.Token);
+
+        // No murió: hizo backoff (10 s) y volvió a pedir trabajos con el MISMO cursor.
+        Assert.Equal([0, 0], transport.FetchedCursors);
+        Assert.Equal(TimeSpan.FromSeconds(10), waits[0]); // backoff inicial tras la ronda malformada
+        Assert.InRange(waits[1].TotalSeconds, 8.0, 12.0); // ronda limpia: backoff reseteado + jitter
+        Assert.Equal(PollerState.Stopped, poller.State); // parado limpio por la cancelación, no por el fallo
     }
 }

@@ -126,6 +126,13 @@ public sealed class PollerController
             {
                 // Parada esperada.
             }
+            catch (Exception ex)
+            {
+                // El poller VIEJO murió con un error no contractual: se registra y se sigue.
+                // NUNCA se propaga a quien pidió la parada/reinicio (el bucle del heartbeat y
+                // el re-pair por la pipe no pueden morir por un poller anterior accidentado).
+                _logger.LogError(ex, "El poller anterior terminó con un error inesperado al pararlo.");
+            }
         }
 
         cts.Dispose();

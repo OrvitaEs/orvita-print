@@ -100,6 +100,7 @@ public sealed class AgentWorker : BackgroundService
             _poller.Start(stoppingToken);
 
             // 5. Re-pair por la pipe (worker en marcha): poller nuevo con el transporte nuevo + latido ya.
+            _stoppingToken = stoppingToken;
             _pairing.PairApplied += OnPairApplied;
 
             // 6. Latidos cada 60 s (Doc/04 §5.3).
@@ -107,12 +108,29 @@ public sealed class AgentWorker : BackgroundService
             using var timer = new PeriodicTimer(interval);
             while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false))
             {
-                var previousPollInterval = ResolvePollInterval();
-                await SendHeartbeatSafelyAsync(stoppingToken).ConfigureAwait(false);
-                if (ResolvePollInterval() != previousPollInterval)
+                try
                 {
-                    _logger.LogInformation("El intervalo de poll cambió a {Seconds} s; se reinicia el poller.", ResolvePollInterval());
-                    await _poller.RestartAsync(stoppingToken).ConfigureAwait(false);
+                    var previousPollInterval = ResolvePollInterval();
+                    await SendHeartbeatSafelyAsync(stoppingToken).ConfigureAwait(false);
+                    if (ResolvePollInterval() != previousPollInterval)
+                    {
+                        _logger.LogInformation("El intervalo de poll cambió a {Seconds} s; se reinicia el poller.", ResolvePollInterval());
+                        await _poller.RestartAsync(stoppingToken).ConfigureAwait(false);
+                    }
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    throw; // parada real: que la vea el bucle principal
+                }
+                catch (Exception ex)
+                {
+                    // EL LATIDO NO MUERE NUNCA EN SILENCIO (incidente 2026-11-23: el bucle del
+                    // heartbeat dejaba de latir sin rastro). Cualquier excepción inesperada del
+                    // tick (p. ej. el reinicio del poller tras un cambio de intervalo) se
+                    // registra con ERROR y el bucle sigue en el siguiente intervalo.
+                    _logger.LogError(
+                        ex,
+                        "El tick del heartbeat falló de forma inesperada; se reintenta en el siguiente intervalo.");
                 }
             }
         }
@@ -131,6 +149,9 @@ public sealed class AgentWorker : BackgroundService
     private int ResolvePollInterval() =>
         _configState.PollIntervalSeconds ?? _runtime.PairPollIntervalSeconds ?? _options.PollIntervalSeconds;
 
+    /// <summary>Token de parada del worker, para el re-pair aplicado con el servicio parándose.</summary>
+    private CancellationToken _stoppingToken;
+
     /// <summary>Re-pair con el worker en marcha: reinicia el poller (transporte nuevo) y lanza un latido inmediato.</summary>
     private void OnPairApplied()
     {
@@ -139,8 +160,12 @@ public sealed class AgentWorker : BackgroundService
             try
             {
                 _logger.LogInformation("Re-emparejamiento aplicado: reiniciando poller con el transporte nuevo.");
-                await _poller.RestartAsync(CancellationToken.None).ConfigureAwait(false);
-                await SendHeartbeatSafelyAsync(CancellationToken.None).ConfigureAwait(false);
+                await _poller.RestartAsync(_stoppingToken).ConfigureAwait(false);
+                await SendHeartbeatSafelyAsync(_stoppingToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (_stoppingToken.IsCancellationRequested)
+            {
+                // El servicio se está parando: nada que hacer.
             }
             catch (Exception ex)
             {
