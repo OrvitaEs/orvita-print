@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Orvita.Print.Contracts;
 using Orvita.Print.Core;
+using Orvita.Print.Printing.Windows;
 
 namespace Orvita.Print.Service;
 
@@ -209,6 +210,23 @@ public sealed class ManagementRequestHandler
         var address = string.IsNullOrWhiteSpace(args.Address) ? null : args.Address.Trim();
         var printer = string.IsNullOrWhiteSpace(args.Printer) ? null : args.Printer.Trim();
 
+        // Salida tipo «pdf» (pruebas/demos): la impresora es SIEMPRE «Microsoft Print to PDF»
+        // (sin diálogos); si algún cliente de la pipe manda otra, se registra el aviso y se
+        // ignora. Sin directorio, el default del transporte (%ProgramData%\OrvitaPrint\prints\)
+        // se guarda explícito para que status/destination list lo muestren.
+        var warnings = new List<string>();
+        if (kind == PrintTransportKind.Pdf)
+        {
+            if (!string.IsNullOrWhiteSpace(printer)
+                && !string.Equals(printer, PdfTransport.PrinterName, StringComparison.OrdinalIgnoreCase))
+            {
+                warnings.Add($"En una salida pdf la impresora es siempre «{PdfTransport.PrinterName}»: se ignora «{printer}» (el directorio de los PDFs va en --address).");
+            }
+
+            printer = PdfTransport.PrinterName;
+            address ??= PdfTransport.DefaultDirectory;
+        }
+
         if (kind == PrintTransportKind.Tcp9100 && string.IsNullOrWhiteSpace(address))
         {
             return ManagementResponse.Failure(
@@ -240,7 +258,8 @@ public sealed class ManagementRequestHandler
         // Validación contra la enumeración de impresoras (F2-05) y aviso de impresora repetida
         // (Doc/03 §6.7: para dos copias está copies, no dos salidas). Son AVISOS: se guarda igual,
         // porque la impresora puede conectarse más tarde (el fallo explícito llega al imprimir).
-        var warnings = new List<string>();
+        // En pdf no aplica el aviso de impresora repetida: dos salidas pdf a directorios
+        // distintos comparten impresora y es legítimo.
         var printerFound = true;
         if (printer is not null)
         {
@@ -257,10 +276,12 @@ public sealed class ManagementRequestHandler
             }
         }
 
-        var twin = _store.ListDestinations().FirstOrDefault(d =>
-            d.Role != destination.Role &&
-            !string.IsNullOrWhiteSpace(d.PrinterName) &&
-            string.Equals(d.PrinterName, destination.PrinterName, StringComparison.OrdinalIgnoreCase));
+        var twin = destination.Kind == PrintTransportKind.Pdf
+            ? null
+            : _store.ListDestinations().FirstOrDefault(d =>
+                d.Role != destination.Role &&
+                !string.IsNullOrWhiteSpace(d.PrinterName) &&
+                string.Equals(d.PrinterName, destination.PrinterName, StringComparison.OrdinalIgnoreCase));
         if (twin is not null)
         {
             warnings.Add($"La salida «{twin.Role}» ya apunta a la misma impresora «{twin.PrinterName}»: para dos copias usa --copies (Doc/03 §6.7).");

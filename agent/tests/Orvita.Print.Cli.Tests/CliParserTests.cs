@@ -111,6 +111,34 @@ public sealed class CliParserTests
     }
 
     [Fact]
+    public void Destination_add_acepta_kind_pdf_solo_con_address_o_nada()
+    {
+        // Con directorio explícito…
+        var conDirectorio = Assert.IsType<DestinationAddCommand>(CliParser.Parse(
+            ["destination", "add", "--kind", "pdf", "--address", @"C:\demos\pdfs", "--role", "demo"]).Command);
+        Assert.Equal("pdf", conDirectorio.Kind);
+        Assert.Equal(@"C:\demos\pdfs", conDirectorio.Address);
+        Assert.Null(conDirectorio.PrinterName); // la impresora la fija el servicio
+
+        // …y sin nada: todo por defecto (impresora de PDF + %ProgramData%\OrvitaPrint\prints\).
+        var porDefecto = Assert.IsType<DestinationAddCommand>(CliParser.Parse(
+            ["destination", "add", "--kind", "pdf", "--role", "demo"]).Command);
+        Assert.Equal("pdf", porDefecto.Kind);
+        Assert.Null(porDefecto.Address);
+        Assert.Null(porDefecto.PrinterName);
+    }
+
+    [Fact]
+    public void Destination_add_pdf_rechaza_otra_impresora()
+    {
+        var outcome = CliParser.Parse(["destination", "add", "--kind", "pdf", "--printer", "EPSON TM-T20III"]);
+
+        Assert.Null(outcome.Command);
+        Assert.NotNull(outcome.Error);
+        Assert.Contains("Microsoft Print to PDF", outcome.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Destination_list_y_remove()
     {
         Assert.IsType<DestinationListCommand>(CliParser.Parse(["destination", "list"]).Command);

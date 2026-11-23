@@ -26,6 +26,7 @@ public sealed class WindowsPrintTransportFactory : IPrintTransportFactory
             PrintTransportKind.RawSpooler => new RawSpoolerTransport(),
             PrintTransportKind.Gdi => new GdiTransport(),
             PrintTransportKind.Tcp9100 => new Tcp9100Transport(),
+            PrintTransportKind.Pdf => new PdfTransport(),
             _ => new FallbackPrintTransport(new RawSpoolerTransport(), new GdiTransport(), _log),
         };
     }

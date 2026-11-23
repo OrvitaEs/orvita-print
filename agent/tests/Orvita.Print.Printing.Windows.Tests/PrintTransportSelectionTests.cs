@@ -132,6 +132,7 @@ public sealed class PrintTransportSelectionTests
         Assert.IsType<RawSpoolerTransport>(factory.Create(new DestinationOptions { Kind = PrintTransportKind.RawSpooler }));
         Assert.IsType<GdiTransport>(factory.Create(new DestinationOptions { Kind = PrintTransportKind.Gdi }));
         Assert.IsType<Tcp9100Transport>(factory.Create(new DestinationOptions { Kind = PrintTransportKind.Tcp9100 }));
+        Assert.IsType<PdfTransport>(factory.Create(new DestinationOptions { Kind = PrintTransportKind.Pdf }));
         Assert.IsType<FallbackPrintTransport>(factory.Create(new DestinationOptions { Kind = PrintTransportKind.Auto }));
         Assert.IsType<FallbackPrintTransport>(factory.Create(new DestinationOptions { Kind = (PrintTransportKind)999 }));
     }

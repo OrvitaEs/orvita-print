@@ -219,9 +219,9 @@ public static class CliParser
                     break;
                 case "--kind" when i + 1 < args.Length:
                     kind = args[++i].Trim().ToLowerInvariant();
-                    if (kind is not ("auto" or "raw" or "gdi" or "tcp"))
+                    if (kind is not ("auto" or "raw" or "gdi" or "tcp" or "pdf"))
                     {
-                        throw new UsageException("--kind debe ser auto, raw, gdi o tcp.");
+                        throw new UsageException("--kind debe ser auto, raw, gdi, tcp o pdf.");
                     }
 
                     break;
@@ -247,7 +247,21 @@ public static class CliParser
             }
         }
 
-        if (string.IsNullOrWhiteSpace(printer) && string.IsNullOrWhiteSpace(address))
+        // Salida pdf (pruebas/demos): la impresora es siempre «Microsoft Print to PDF» (la fija
+        // el servicio). Nombre duplicado a propósito: el CLI no referencia Printing.Windows
+        // (ADR-12); si el usuario pide otra impresora, se para ANTES de tocar el servicio.
+        if (kind == "pdf"
+            && !string.IsNullOrWhiteSpace(printer)
+            && !string.Equals(printer, "Microsoft Print to PDF", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new UsageException(
+                "La salida kind=pdf imprime siempre en «Microsoft Print to PDF»: no uses --printer. " +
+                "El directorio donde escribir los PDFs se indica con --address.");
+        }
+
+        // Una salida pdf es la única que puede crearse sin nada más: printer fijo y directorio
+        // por defecto (%ProgramData%\OrvitaPrint\prints\). El resto necesita --printer.
+        if (kind != "pdf" && string.IsNullOrWhiteSpace(printer) && string.IsNullOrWhiteSpace(address))
         {
             throw new UsageException(
                 "Falta --printer \"nombre exacto de la impresora\". Consulta los nombres con orvitaprint destination list (Doc/03 §6.6).");

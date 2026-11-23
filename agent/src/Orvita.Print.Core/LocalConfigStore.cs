@@ -313,6 +313,7 @@ public sealed class LocalConfigStore : IDisposable
         PrintTransportKind.RawSpooler => "raw",
         PrintTransportKind.Gdi => "gdi",
         PrintTransportKind.Tcp9100 => "tcp",
+        PrintTransportKind.Pdf => "pdf",
         _ => "auto",
     };
 
@@ -322,6 +323,7 @@ public sealed class LocalConfigStore : IDisposable
         "raw" => PrintTransportKind.RawSpooler,
         "gdi" => PrintTransportKind.Gdi,
         "tcp" => PrintTransportKind.Tcp9100,
+        "pdf" => PrintTransportKind.Pdf,
         _ => PrintTransportKind.Auto,
     };
 }

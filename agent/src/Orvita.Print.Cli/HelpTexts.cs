@@ -56,9 +56,16 @@ public static class HelpTexts
           --role <rol>           Rol de la salida (por defecto: default). Único: si existe, se reemplaza.
           --copies <1..99>       Copias por defecto de la salida (por defecto: 1).
           --label "<texto>"      Nombre visible («Mostrador», «Cocina»…).
-          --kind <tipo>          auto (RAW con respaldo GDI), raw, gdi o tcp (por defecto: auto).
-          --address <host:puerto>  Para salidas TCP 9100 (impresora de red); con --kind tcp.
+          --kind <tipo>          auto (RAW con respaldo GDI), raw, gdi, tcp o pdf (por defecto: auto).
+          --address <ruta|host>  TCP 9100: host[:puerto] de la impresora de red.
+                                 pdf: DIRECTORIO donde escribir los PDFs.
           --enabled true|false   Salida activa (por defecto: true).
+
+        Salida pdf (pruebas de integración y demos): imprime siempre en «Microsoft Print to PDF»
+        sin diálogos; no acepta --printer. Cada trabajo genera un PDF con nombre autogenerado
+        (ticket-<orden>-<trabajo>-<fecha>.pdf) en --address (por defecto
+        %ProgramData%\OrvitaPrint\prints\; el directorio se crea si no existe). Las copias del
+        trabajo van repetidas dentro del mismo PDF (una sola pasada).
 
         Avisa si la impresora no aparece instalada o si otra salida ya apunta a la misma
         impresora (para dos copias existe --copies; Doc/03 §6.7).

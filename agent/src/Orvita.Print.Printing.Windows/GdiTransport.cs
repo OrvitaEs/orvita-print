@@ -98,8 +98,12 @@ public sealed class GdiTransport : IPrintTransport
 
     // ------------------------------------------------------------ pintado
 
-    /// <summary>Estado de pintado entre páginas de la misma copia.</summary>
-    private sealed class PaintState
+    /// <summary>
+    /// Estado de pintado entre páginas de la misma copia. INTERNAL: lo comparte el destino
+    /// tipo «pdf» (<see cref="PdfTransport"/>), que maqueta con el mismo <see cref="GdiTicketLayout"/>
+    /// y pinta con el mismo motor GDI pero escribiendo a fichero (Microsoft Print to PDF).
+    /// </summary>
+    internal sealed class PaintState
     {
         public PaintState(List<LayoutLine> lines)
         {
@@ -144,7 +148,7 @@ public sealed class GdiTransport : IPrintTransport
         public void Advance() => Next++;
     }
 
-    private static void PaintPage(PrintPageEventArgs e, PaintState state)
+    internal static void PaintPage(PrintPageEventArgs e, PaintState state)
     {
         state.Measure(e);
         var graphics = e.Graphics!;

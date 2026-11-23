@@ -20,6 +20,13 @@ public enum PrintTransportKind
 
     /// <summary>Socket directo al puerto 9100 de una impresora de red.</summary>
     Tcp9100,
+
+    /// <summary>
+    /// Fichero PDF vía «Microsoft Print to PDF», sin diálogos (pruebas de integración y
+    /// demos). La implementación vive en Printing.Windows; <see cref="DestinationOptions.Address"/>
+    /// es el DIRECTORIO donde escribir los PDFs.
+    /// </summary>
+    Pdf,
 }
 
 /// <summary>
@@ -46,6 +53,7 @@ public sealed class DestinationOptions
     public PrintTransportKind Kind { get; set; } = PrintTransportKind.Auto;
 
     /// <summary>Host o host:puerto para <see cref="PrintTransportKind.Tcp9100"/> (puerto por defecto 9100).</summary>
+    /// <para>Para <see cref="PrintTransportKind.Pdf"/>: DIRECTORIO donde escribir los PDFs (opcional).</para>
     public string? Address { get; set; }
 }
 

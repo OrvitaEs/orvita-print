@@ -200,11 +200,13 @@ public sealed class LocalConfigStoreTests : IDisposable
         Assert.Equal("raw", LocalConfigStore.ToKindName(PrintTransportKind.RawSpooler));
         Assert.Equal("gdi", LocalConfigStore.ToKindName(PrintTransportKind.Gdi));
         Assert.Equal("tcp", LocalConfigStore.ToKindName(PrintTransportKind.Tcp9100));
+        Assert.Equal("pdf", LocalConfigStore.ToKindName(PrintTransportKind.Pdf));
 
         Assert.Equal(PrintTransportKind.Auto, LocalConfigStore.ParseKindName("auto"));
         Assert.Equal(PrintTransportKind.RawSpooler, LocalConfigStore.ParseKindName("RAW"));
         Assert.Equal(PrintTransportKind.Gdi, LocalConfigStore.ParseKindName("Gdi"));
         Assert.Equal(PrintTransportKind.Tcp9100, LocalConfigStore.ParseKindName("tcp"));
+        Assert.Equal(PrintTransportKind.Pdf, LocalConfigStore.ParseKindName("PDF"));
         Assert.Equal(PrintTransportKind.Auto, LocalConfigStore.ParseKindName(null));
         Assert.Equal(PrintTransportKind.Auto, LocalConfigStore.ParseKindName("loquesea")); // desconocido → auto
     }

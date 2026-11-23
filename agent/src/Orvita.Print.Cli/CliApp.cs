@@ -221,7 +221,13 @@ public static class CliApp
                 var address = destination.TryGetProperty("address", out var addr) && addr.ValueKind == JsonValueKind.String
                     ? addr.GetString()
                     : null;
-                var target = string.IsNullOrWhiteSpace(printer) ? address ?? "(sin impresora)" : printer;
+                var kind = destination.TryGetProperty("kind", out var kd) && kd.ValueKind == JsonValueKind.String
+                    ? kd.GetString()
+                    : "auto";
+                // pdf: el destino visible es el DIRECTORIO de los PDFs (la impresora es fija).
+                var target = kind == "pdf"
+                    ? string.IsNullOrWhiteSpace(address) ? "(directorio por defecto)" : address
+                    : string.IsNullOrWhiteSpace(printer) ? address ?? "(sin impresora)" : printer;
                 var enabled = destination.TryGetProperty("enabled", out var en) && en.ValueKind == JsonValueKind.True
                     ? "activa"
                     : "INACTIVA";
@@ -231,9 +237,6 @@ public static class CliApp
                 var copies = destination.TryGetProperty("copies", out var cp) && cp.ValueKind == JsonValueKind.Number
                     ? cp.GetInt32()
                     : 1;
-                var kind = destination.TryGetProperty("kind", out var kd) && kd.ValueKind == JsonValueKind.String
-                    ? kd.GetString()
-                    : "auto";
 
                 await output.WriteLineAsync(
                     $"  {(destination.TryGetProperty("role", out var role) ? role.GetString() : "?")} · {(string.IsNullOrEmpty(label) ? "(sin etiqueta)" : label)} → {target} ×{copies} [{kind}, {enabled}]")
@@ -347,13 +350,22 @@ public static class CliApp
                 var printer = destination.TryGetProperty("printer_name", out var pn) && pn.ValueKind == JsonValueKind.String
                     ? pn.GetString()
                     : null;
-                var target = string.IsNullOrWhiteSpace(printer)
-                    ? destination.TryGetProperty("address", out var addr) && addr.ValueKind == JsonValueKind.String ? addr.GetString() : "(sin destino)"
-                    : printer;
+                var address = destination.TryGetProperty("address", out var addr) && addr.ValueKind == JsonValueKind.String
+                    ? addr.GetString()
+                    : null;
+                var kind = destination.TryGetProperty("kind", out var kd) && kd.ValueKind == JsonValueKind.String
+                    ? kd.GetString()
+                    : "auto";
+                // pdf: el destino visible es el DIRECTORIO de los PDFs (la impresora es fija).
+                var target = kind == "pdf"
+                    ? string.IsNullOrWhiteSpace(address) ? "(directorio por defecto)" : address
+                    : string.IsNullOrWhiteSpace(printer)
+                        ? address ?? "(sin destino)"
+                        : printer;
                 var enabled = destination.TryGetProperty("enabled", out var en) && en.ValueKind == JsonValueKind.True ? "activa" : "INACTIVA";
                 var role = destination.TryGetProperty("role", out var r) ? r.GetString() : "?";
                 var copies = destination.TryGetProperty("copies", out var cp) && cp.ValueKind == JsonValueKind.Number ? cp.GetInt32() : 1;
-                await output.WriteLineAsync($"  {role} → {target} ×{copies} [{enabled}]").ConfigureAwait(false);
+                await output.WriteLineAsync($"  {role} → {target} ×{copies} [{kind}, {enabled}]").ConfigureAwait(false);
             }
         }
 

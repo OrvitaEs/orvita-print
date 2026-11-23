@@ -189,6 +189,61 @@ public sealed class ManagementRequestHandlerTests : IDisposable
         Assert.Contains("destination list", response.Error);
     }
 
+    // ------------------------------------------------------------------------ destination pdf
+
+    [Fact]
+    public async Task Destination_add_pdf_fija_la_impresora_de_pdf_y_guarda_el_directorio()
+    {
+        var response = await _handler.HandleAsync(Request(ManagementProtocol.Operations.DestinationAdd,
+            new { role = "demo", kind = "pdf", address = @"C:\demos\pdfs" }), CancellationToken.None);
+
+        Assert.True(response.Ok);
+        var destination = _store.ListDestinations().Single();
+        Assert.Equal(PrintTransportKind.Pdf, destination.Kind);
+        Assert.Equal(PdfTransport.PrinterName, destination.PrinterName); // SIEMPRE la de PDF
+        Assert.Equal(@"C:\demos\pdfs", destination.Address);
+        Assert.Equal("pdf", LocalConfigStore.ToKindName(destination.Kind));
+    }
+
+    [Fact]
+    public async Task Destination_add_pdf_sin_address_guarda_el_directorio_por_defecto()
+    {
+        var response = await _handler.HandleAsync(Request(ManagementProtocol.Operations.DestinationAdd,
+            new { role = "demo", kind = "pdf" }), CancellationToken.None);
+
+        Assert.True(response.Ok);
+        var destination = _store.ListDestinations().Single();
+        Assert.Equal(PdfTransport.DefaultDirectory, destination.Address);
+    }
+
+    [Fact]
+    public async Task Destination_add_pdf_ignora_otra_impresora_con_aviso()
+    {
+        var response = await _handler.HandleAsync(Request(ManagementProtocol.Operations.DestinationAdd,
+            new { role = "demo", kind = "pdf", address = @"C:\demos\pdfs", printer = "EPSON TM-T20III" }), CancellationToken.None);
+
+        Assert.True(response.Ok);
+        var warnings = response.Data!.Value.GetProperty("warnings").EnumerateArray().Select(w => w.GetString()).ToList();
+        Assert.Contains(warnings, w => w!.Contains("se ignora", StringComparison.Ordinal) && w.Contains("EPSON", StringComparison.Ordinal));
+
+        var destination = _store.ListDestinations().Single();
+        Assert.Equal(PdfTransport.PrinterName, destination.PrinterName); // la petición no la cambia
+    }
+
+    [Fact]
+    public async Task Destination_add_dos_pdf_no_avisa_de_impresora_repetida()
+    {
+        await _handler.HandleAsync(Request(ManagementProtocol.Operations.DestinationAdd,
+            new { role = "demo", kind = "pdf", address = @"C:\demos\a" }), CancellationToken.None);
+        var segunda = await _handler.HandleAsync(Request(ManagementProtocol.Operations.DestinationAdd,
+            new { role = "cocina", kind = "pdf", address = @"C:\demos\b" }), CancellationToken.None);
+
+        Assert.True(segunda.Ok);
+        // Dos salidas pdf comparten impresora por diseño (distinto directorio): sin aviso gemelo.
+        Assert.DoesNotContain(segunda.Data!.Value.GetProperty("warnings").EnumerateArray(),
+            w => w.GetString()!.Contains("misma impresora", StringComparison.Ordinal));
+    }
+
     // -------------------------------------------------------------------- destination list/remove
 
     [Fact]
