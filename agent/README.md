@@ -1,7 +1,9 @@
 # Orvita Print — Agente (.NET 10)
 
-Solución del agente (Doc/03 §6, Doc/07 §2.2). Estado actual: **F2-01…F2-10** (gestión por CLI
-sobre pipe de gestión, almacén local con token DPAPI; falta update F2-11 y doctor ZIP F2-12).
+Solución del agente (Doc/03 §6, Doc/07 §2.2). Estado actual: **F2 completa y F3 completa**
+(gestión por CLI sobre pipe de gestión, almacén local con token DPAPI, canal de actualización
+firmado Ed25519 con rollback, doctor ZIP, instalador MSI por máquina con servicio auto-start,
+licencia ECDSA P-256 validada offline y herramientas de release).
 
 ## Proyectos
 
@@ -12,10 +14,13 @@ sobre pipe de gestión, almacén local con token DPAPI; falta update F2-11 y doc
 | `src/Orvita.Print.Printing.Windows` | lib (net10.0-windows) | La ÚNICA pieza que toca APIs de Windows de impresión (ADR-12): spooler RAW (`winspool.drv` P/Invoke, datatype RAW), respaldo GDI (`System.Drawing.Printing`), TCP 9100, selector Auto RAW→GDI, enumeración de impresoras (`EnumPrinters` nivel 2 + `GetDefaultPrinter`), decodificador PNG puro (DeflateStream, sin System.Drawing) y el ticket de prueba fijo. |
 | `src/Orvita.Print.Service` | exe (net10.0-windows) | Servicio headless (ADR-09/13): worker + `UseWindowsService`, pipeline claim→render→imprimir→ack, heartbeat 60 s con re-sincronización por `config_version`, logs Serilog con rotación diaria (7 días). F2-08: servidor de la pipe de gestión (`ManagementPipeServer`, ACL restrictiva, una conexión cada vez) con operaciones `pair`, `destination add/list/remove`, `status`, `test`, `doctor`, `restart-poller`; `PairingService` (pair → almacén con token DPAPI → transporte en caliente) y `PollerController` (re-pair/reinicio sin tirar el proceso). DPAPI (`ProtectedData`, ámbito `LocalMachine` + entropía fija) vive aquí (S-01). |
 | `src/Orvita.Print.Cli` | exe (net10.0-windows) | `orvitaprint` (F2-09, ADR-13): cliente de la pipe de gestión — `pair`, `destination add/list/remove`, `status`, `test`, `doctor`, `restart-poller`. Salidas en español, `--help` por comando y códigos de salida para scripts (0 ok · 1 fallo · 2 uso · 3 servicio no en ejecución). NUNCA lee el almacén: todo por la pipe (S-05). |
-| `tests/Orvita.Print.Core.Tests` | xUnit | 159 pruebas sin servidor real ni impresora. |
+| `tests/Orvita.Print.Core.Tests` | xUnit | 227 pruebas sin servidor real ni impresora. |
 | `tests/Orvita.Print.Printing.Windows.Tests` | xUnit | 44 pruebas: PNG (fixtures generados en la prueba), TCP 9100 con `TcpListener` capturando bytes, selección RAW/GDI/transitorios, layout GDI, spooler/enumerador reales sin hardware. |
-| `tests/Orvita.Print.Service.Tests` | xUnit | 67 pruebas: pipeline completo con servidor y transporte de impresión falsos, outbox (claim por id, reset), release HTTP, heartbeat y re-sincronización, humo del host en consola, DPAPI real (Windows), flujo de pair con HTTP falso (200/400/410/429 + S-03), handler de la pipe (status oculta el token, avisos de destination) y servidor de pipe REAL in-proceso con cliente real. |
-| `tests/Orvita.Print.Cli.Tests` | xUnit | 17 pruebas: parser de subcomandos y opciones, validación S-03 en el CLI, ayuda por comando, códigos de salida y clasificación de errores de pipe. |
+| `tests/Orvita.Print.Service.Tests` | xUnit | 92 pruebas: pipeline completo con servidor y transporte de impresión falsos, outbox (claim por id, reset), release HTTP, heartbeat y re-sincronización, humo del host en consola, DPAPI real (Windows), flujo de pair con HTTP falso (200/400/410/429 + S-03), handler de la pipe (status oculta el token, avisos de destination), servidor de pipe REAL in-proceso con cliente real y licencia (estados missing/valid/expired/invalid, cable en status/doctor, canal de updates bloqueado). |
+| `tests/Orvita.Print.Cli.Tests` | xUnit | 22 pruebas: parser de subcomandos y opciones, validación S-03 en el CLI, ayuda por comando, códigos de salida y clasificación de errores de pipe. |
+| `tools/Orvita.Print.ReleaseTools` | exe (net10.0) | **Herramienta de release NUESTRA, NO se distribuye en el MSI** (F3-02/F3-03): `orvita-release genkey` (ECDSA P-256 licencias + Ed25519 manifiestos), `genlicense` y `genmanifest`. Claves privadas FUERA del repositorio y del servidor (ver su README). |
+| `installer/` | WiX | **MSI por máquina (F3-01)**: registro del servicio auto-start, ACL restrictiva de `%ProgramData%\OrvitaPrint`, property pública `ORVDATA`, major-upgrade con UpgradeCode estable, SHA-256 del MSI en `artifacts/checksum.txt`. Compilar con `build.ps1` (publica self-contained win-x64, cosecha y llama a `wix build`); validar con `build.ps1 -Validate` (`msiexec /a`) y `audit-msi.ps1`. |
+| `docs/guia-instalacion.md` | doc | **Guía de instalación para el profesional (F3-04)**: prerrequisitos, verificación SHA-256, aviso SmartScreen, pair, salidas, test, diagnóstico, desinstalación y updates. |
 
 `tools/Smoke/`: consola de humo del contrato contra el wp-env real (no está en la solución).
 
@@ -24,8 +29,11 @@ sobre pipe de gestión, almacén local con token DPAPI; falta update F2-11 y doc
 ```powershell
 cd agent
 dotnet build
-dotnet test   # 287 pruebas: 159 + 44 + 67 + 17
+dotnet test   # 385 pruebas: 227 + 44 + 92 + 22
 ```
+
+El SDK está fijado en `global.json` (10.0.200 estable, `rollForward latestFeature`,
+`allowPrerelease false` — excluye la preview de .NET 11 que haya instalada).
 
 Objetivo `net10.0` (net10.0-windows donde toca), `x64` documentado en `Directory.Build.props`
 para publicación self-contained posterior (ADR-10).
@@ -71,17 +79,47 @@ El emparejamiento se aplica EN CALIENTE: el worker despierta, envía el heartbea
 salidas del almacén y arranca el poller sin reiniciar el proceso. Al reiniciar el servicio,
 el emparejamiento se recarga del almacén (token DPAPI → memoria, nunca a disco plano).
 
-## Instalación como servicio de Windows (F3, requiere admin — NO automatizada aún)
+## Instalación por máquina: el MSI (F3-01, requiere admin)
 
 ```powershell
-sc.exe create OrvitaPrint binPath= "C:\Program Files\OrvitaPrint\Orvita.Print.Service.exe" start= auto DisplayName= "Orvita Print Agent"
+# Compilar (publica self-contained win-x64, cosecha los ficheros, valida con ICE y deja el SHA-256):
+powershell installer\build.ps1          # → installer\artifacts\OrvitaPrint-<versión>.msi + checksum.txt
+
+# Validar SIN instalar en esta máquina (extracción administrativa, no requiere admin):
+powershell installer\build.ps1 -SkipPublish -Validate
+powershell installer\audit-msi.ps1 -MsiPath installer\artifacts\OrvitaPrint-1.0.0.msi
+```
+
+El MSI instala los binarios en `C:\Program Files\Orvita Print\` (service\ y cli\ + PATH),
+registra el **servicio Windows OrvitaPrint con arranque automático**, crea
+`%ProgramData%\OrvitaPrint` con ACL restrictiva (SYSTEM/Administradores control total, Usuarios
+solo lectura — el token no lo toca nadie más, S-01) y acepta la property pública `ORVDATA` para
+reubicar los datos. Major-upgrade: instalar encima reemplaza la versión anterior; desinstalar
+**conserva** `%ProgramData%\OrvitaPrint` (emparejamiento y licencia intactos). Sin firma de
+código en V1 (Doc/03 §9): el SHA-256 se publica junto a la descarga y la guía documenta el
+aviso de SmartScreen.
+
+Para probar en sesión 0 SIN MSI, los comandos manuales siguen sirviendo:
+
+```powershell
+sc.exe create OrvitaPrint binPath= "C:\Program Files\Orvita Print\service\Orvita.Print.Service.exe" start= auto DisplayName= "Orvita Print Agent"
 sc.exe description OrvitaPrint "Agente de impresión térmica de Orvita Print (WooCommerce)"
 sc.exe failure OrvitaPrint reset= 86400 actions= restart/60000/restart/60000/restart/60000
 sc.exe start OrvitaPrint
 ```
 
-El MSI (WiX) de F3-01 hará esto y los permisos de `ProgramData`; hasta entonces, estos
-comandos manuales sirven para probar en sesión 0.
+## Licencia del agente (F3-02) y canal de actualizaciones (F3-03)
+
+- La licencia (`license.dat`, JSON firmado con **ECDSA P-256**) se copia a
+  `%ProgramData%\OrvitaPrint\license.dat` y el servicio la valida al arrancar **offline** (clave
+  pública EMBEBIDA en `LicenseTrust`). Estado visible en `status`/`doctor`:
+  **sin licencia el agente funciona con 1 local** (política V1 del piloto); con
+  `updates_until` pasado sigue funcionando y solo deja de aceptar actualizaciones.
+- El canal de actualización (F2-11) comprueba `latest.json` firmado con **Ed25519** una vez al
+  día y aplica el MSI solo si firma y SHA-256 verifican; cualquier fallo conserva la versión.
+- Las claves de firma y el flujo completo (genkey/genlicense/genmanifest → subir MSI + latest.json
+  + checksum) están en `tools/Orvita.Print.ReleaseTools/README.md`. Las privadas viven FUERA del
+  repo; las públicas de release están embebidas (`UpdateTrust`/`LicenseTrust`).
 
 ## Prueba end-to-end contra wp-env
 
