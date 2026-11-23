@@ -50,10 +50,14 @@ final class Plugin {
 		// API REST (Doc 04 §5): salud, trabajos, heartbeat y configuración.
 		Rest\Router::register();
 
-		// Panel de administración: menú, ajustes (F1-01), locales y avisos (F1-02).
+		// Panel de administración: menú, ajustes (F1-01), locales y avisos (F1-02),
+		// plantilla (F1-03) y vista previa/impresión manual (F1-04).
 		Admin\Menu::register();
 		Admin\SettingsPage::register();
 		Admin\LocationsPage::register();
+		Admin\TemplatePage::register();
+		Admin\PreviewPage::register();
+		Admin\OrderActions::register();
 		Admin\Notices::register();
 
 		// Comando de siembra para F0: `wp orp seed` (F0-08).

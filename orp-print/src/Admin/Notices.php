@@ -24,9 +24,25 @@ final class Notices {
 
 	/** Aviso de pedidos que cayeron al local por defecto sin regla coincidente. */
 	public static function render(): void {
+		if ( ! current_user_can( ORP_CAPABILITY ) ) {
+			return;
+		}
+
+		// Resultado de la reimpresión manual (F1-04): se consume una sola vez.
+		$reprint = OrderActions::take_result();
+
+		if ( null !== $reprint ) {
+			printf(
+				'<div class="notice notice-%1$s is-dismissible"><p><strong>%2$s</strong> %3$s</p></div>',
+				esc_attr( 'success' === $reprint['type'] ? 'success' : ( 'warning' === $reprint['type'] ? 'warning' : 'info' ) ),
+				esc_html__( 'Orvita Print:', 'orp-print' ),
+				esc_html( (string) $reprint['message'] )
+			);
+		}
+
 		$entries = LocationResolver::take_fallback_notices();
 
-		if ( array() === $entries || ! current_user_can( ORP_CAPABILITY ) ) {
+		if ( array() === $entries ) {
 			return;
 		}
 

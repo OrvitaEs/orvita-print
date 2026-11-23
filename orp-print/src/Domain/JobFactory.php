@@ -41,10 +41,98 @@ final class JobFactory {
 		array $document,
 		string $trigger = 'created'
 	): ?int {
+		$key = self::idempotency_key( $order_id, $trigger, $location_id, $printer_role );
+
+		return self::insert(
+			$location_id,
+			$order_id,
+			$printer_role,
+			$copies,
+			$document,
+			$key
+		);
+	}
+
+	/**
+	 * Clave de idempotencia según Doc/04 §3. El ámbito de deduplicación
+	 * (dedupe_scope) decide si el disparador forma parte de la clave:
+	 * - order:   sha256(order_id | location_id | role | template_version)
+	 * - trigger: incluye el trigger entre order_id y location_id.
+	 */
+	public static function idempotency_key( int $order_id, string $trigger, int $location_id, string $printer_role ): string {
+		$template_version = (int) get_option( 'orp_template_version', 1 );
+		$scope            = (string) Settings::get( 'dedupe_scope', 'order' );
+
+		if ( 'trigger' === $scope ) {
+			return hash(
+				'sha256',
+				$order_id . '|' . $trigger . '|' . $location_id . '|' . $printer_role . '|' . $template_version
+			);
+		}
+
+		return hash(
+			'sha256',
+			$order_id . '|' . $location_id . '|' . $printer_role . '|' . $template_version
+		);
+	}
+
+	/**
+	 * Reimpresión manual desde la ficha del pedido (F1-04, Doc/04 §3):
+	 * sha256(order_id | manual | printer_role | unix_timestamp | user_id).
+	 * El timestamp y el usuario garantizan que siempre genera un trabajo
+	 * nuevo, con el documento de la plantilla vigente.
+	 *
+	 * Desviación documentada del literal «unix_timestamp»: se usa
+	 * microtime(true) (unix timestamp con microsegundos) para que dos
+	 * reimpresiones del mismo usuario en el mismo segundo tampoco colisionen;
+	 * el contrato exige que la reimpresión «siempre genere un trabajo nuevo».
+	 *
+	 * @param int    $location_id  Local destino.
+	 * @param int    $order_id     Pedido.
+	 * @param string $printer_role Salida (rol de impresión).
+	 * @param int    $copies       Copias congeladas de la salida.
+	 * @param array  $document     Documento neutro v1 con la plantilla actual.
+	 * @param int    $user_id      Usuario que lanza la reimpresión.
+	 * @return int|null Id del trabajo nuevo, o null si colisionara (no debería).
+	 */
+	public static function create_manual(
+		int $location_id,
+		int $order_id,
+		string $printer_role,
+		int $copies,
+		array $document,
+		int $user_id
+	): ?int {
+		$key = hash(
+			'sha256',
+			$order_id . '|manual|' . $printer_role . '|' . (string) microtime( true ) . '|' . $user_id
+		);
+
+		return self::insert(
+			$location_id,
+			$order_id,
+			$printer_role,
+			$copies,
+			$document,
+			$key
+		);
+	}
+
+	/**
+	 * Inserción idempotente común (INSERT IGNORE, Doc/06 §11).
+	 * Si la clave ya existe, no se duplica: devuelve null y se registra.
+	 */
+	private static function insert(
+		int $location_id,
+		int $order_id,
+		string $printer_role,
+		int $copies,
+		array $document,
+		string $key
+	): ?int {
 		global $wpdb;
 
 		$table     = $wpdb->prefix . 'orp_jobs';
-		$key       = self::idempotency_key( $order_id, $trigger, $location_id, $printer_role );
 		$now       = Clock::now_sql();
 		$expires   = Clock::sql_offset_minutes( (int) Settings::get( 'job_expiry_minutes', 30 ) );
 		$max_tries = self::DEFAULT_MAX_ATTEMPTS;
@@ -81,28 +169,5 @@ final class JobFactory {
 		}
 
 		return (int) $wpdb->insert_id;
-	}
-
-	/**
-	 * Clave de idempotencia según Doc/04 §3. El ámbito de deduplicación
-	 * (dedupe_scope) decide si el disparador forma parte de la clave:
-	 * - order:   sha256(order_id | location_id | role | template_version)
-	 * - trigger: incluye el trigger entre order_id y location_id.
-	 */
-	public static function idempotency_key( int $order_id, string $trigger, int $location_id, string $printer_role ): string {
-		$template_version = (int) get_option( 'orp_template_version', 1 );
-		$scope            = (string) Settings::get( 'dedupe_scope', 'order' );
-
-		if ( 'trigger' === $scope ) {
-			return hash(
-				'sha256',
-				$order_id . '|' . $trigger . '|' . $location_id . '|' . $printer_role . '|' . $template_version
-			);
-		}
-
-		return hash(
-			'sha256',
-			$order_id . '|' . $location_id . '|' . $printer_role . '|' . $template_version
-		);
 	}
 }

@@ -33,7 +33,7 @@ foreach ( array( 'logs', 'destinations', 'jobs', 'pairing_codes', 'agents', 'loc
 	$wpdb->query( "DROP TABLE IF EXISTS {$prefix}{$suffix}" );
 }
 
-foreach ( array( 'orp_db_version', 'orp_settings', 'orp_template_version', 'orp_config_version' ) as $option ) {
+foreach ( array( 'orp_db_version', 'orp_settings', 'orp_template', 'orp_template_version', 'orp_config_version' ) as $option ) {
 	delete_option( $option );
 }
 

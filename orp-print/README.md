@@ -54,8 +54,11 @@ orp-print/
 │   ├── Install/               # Activator (capacidad manage_orp_print) + Schema (dbDelta, 6 tablas)
 │   ├── Rest/                  # Router (/health), Auth (Bearer + X-Orp-Token, rate limit 120/min),
 │   │                          # JobsController (poll/claim/ack/release), Heartbeat, Config
-│   ├── Domain/                # DocumentBuilder v1, JobFactory (INSERT IGNORE), DestinationRepository, LocationResolver
-│   ├── Admin/                 # menú y página de estado (el panel completo es F1)
+│   ├── Domain/                # JobFactory (INSERT IGNORE + manual), DestinationRepository, LocationResolver
+│   │                          # RuleMatcher, LocationRepository
+│   ├── Template/              # TemplateSettings (campos del ticket), DocumentBuilder (bloques 04 §7.2),
+│   │                          # TicketHtml (vista previa imprimible, sin recursos externos)
+│   ├── Admin/                 # menú, Ajustes, Locales, Plantilla, Vista previa, acciones del pedido, avisos
 │   ├── Cli/SeedCommand.php    # wp orp seed
 │   └── Support/               # Clock (UTC → wp_date), Logger, Settings
 ├── tools/simulator.php        # simulador de agente sin dependencias

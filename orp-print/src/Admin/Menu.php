@@ -6,8 +6,9 @@
  * propia configuración y su propia capacidad (manage_orp_print), y así el
  * panel funciona incluso sin WooCommerce activo (vistas previas, locales).
  *
- * Páginas: Ajustes (3 capas, F1-01), Locales y reglas (F1-02) y Estado
- * (diagnóstico; la página completa de diagnóstico es F1-10).
+ * Páginas: Ajustes (3 capas, F1-01), Locales y reglas (F1-02), Plantilla del
+ * ticket (F1-03), Vista previa (F1-04) y Estado (diagnóstico; la página
+ * completa de diagnóstico es F1-10).
  */
 
 declare(strict_types=1);
@@ -24,6 +25,8 @@ final class Menu {
 	/** Slug del menú principal. */
 	public const SLUG_SETTINGS  = 'orp-print';
 	public const SLUG_LOCATIONS = 'orp-locations';
+	public const SLUG_TEMPLATE  = 'orp-template';
+	public const SLUG_PREVIEW   = 'orp-preview';
 	public const SLUG_STATUS    = 'orp-status';
 
 	/** Registra el hook de menú. */
@@ -59,6 +62,18 @@ final class Menu {
 			self::SLUG_LOCATIONS,
 			array( LocationsPage::class, 'render' )
 		);
+
+		add_submenu_page(
+			self::SLUG_SETTINGS,
+			__( 'Plantilla del ticket', 'orp-print' ),
+			__( 'Plantilla del ticket', 'orp-print' ),
+			ORP_CAPABILITY,
+			self::SLUG_TEMPLATE,
+			array( TemplatePage::class, 'render' )
+		);
+
+		// La vista previa se registra sola (PreviewPage::register): su HTML
+		// sale completo vía load-{hook}, sin chrome de wp-admin.
 
 		add_submenu_page(
 			self::SLUG_SETTINGS,

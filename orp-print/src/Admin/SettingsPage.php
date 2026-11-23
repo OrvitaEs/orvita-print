@@ -20,6 +20,7 @@ namespace Orvita\PrintBridge\Admin;
 use Orvita\PrintBridge\Domain\LocationRepository;
 use Orvita\PrintBridge\Support\Presets;
 use Orvita\PrintBridge\Support\Settings;
+use Orvita\PrintBridge\Template\TemplateSettings;
 
 // Si se llama directamente, salir.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -82,6 +83,12 @@ final class SettingsPage {
 		$values['preset'] = $key;               // …pero nunca la clave preset.
 
 		Settings::save( $values );
+
+		// La parte de plantilla del preset (configuración, no código): marca
+		// los campos por defecto y sube orp_template_version si cambia (F1-03).
+		if ( isset( $preset['template_fields'] ) && is_array( $preset['template_fields'] ) ) {
+			TemplateSettings::apply_field_set( $preset['template_fields'], $key );
+		}
 
 		add_settings_error(
 			'orp-settings',
@@ -183,7 +190,7 @@ final class SettingsPage {
 
 			<h2 class="title"><?php esc_html_e( 'Capa 1 · Producto', 'orp-print' ); ?></h2>
 			<p class="description">
-				<?php esc_html_e( 'Capacidades de esta versión (fijas, no editables): un documento por pedido, de 1 a n salidas por local, disparo al crear el pedido o por estado, deduplicación por pedido o por disparo, y plantilla por definir en la fase F1-03.', 'orp-print' ); ?>
+				<?php esc_html_e( 'Capacidades de esta versión (fijas, no editables): un documento por pedido, de 1 a n salidas por local, disparo al crear el pedido o por estado, deduplicación por pedido o por disparo y plantilla por campos seleccionables (pestaña «Plantilla del ticket»).', 'orp-print' ); ?>
 			</p>
 
 			<hr />
@@ -207,7 +214,7 @@ final class SettingsPage {
 								<?php endforeach; ?>
 							</select>
 							<p class="description">
-								<?php esc_html_e( 'Instalación nueva: «Aviso». Las partes de plantilla y destinos de cada preset se aplican en las fases F1-03 y F1-06.', 'orp-print' ); ?>
+								<?php esc_html_e( 'Instalación nueva: «Aviso». La parte de plantilla del preset marca los campos del ticket; las salidas de cada preset se aplican en la fase F1-06.', 'orp-print' ); ?>
 							</p>
 						</td>
 					</tr>

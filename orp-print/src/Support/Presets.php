@@ -6,8 +6,9 @@
  * Elegir un preset escribe los valores típicos de esa combinación en
  * orp_settings; después el cliente ajusta la capa de instancia a mano.
  *
- * Nota de alcance: las partes de plantilla (mínima, completa, dos plantillas)
- * y de destinos (1 o 2 salidas) se aplicarán en F1-03 y F1-06.
+ * Nota de alcance: los destinos (1 o 2 salidas) se aplican en F1-06. Las
+ * plantillas por rol («Cocina + cliente») quedan fuera de V1 (Doc/04 §2.8):
+ * en V1 hay un documento por pedido y la plantilla única vigente.
  */
 
 declare(strict_types=1);
@@ -40,12 +41,19 @@ final class Presets {
 					'poll_interval'  => 10,
 					'sound_alert'    => false,
 				),
-				'pending_in'      => __( 'Plantilla mínima (F1-03) y 1 salida (F1-06).', 'orp-print' ),
+				'template_fields' => array(
+					'business_name' => true,
+					'datetime'      => true,
+					'order_number'  => true,
+					'items'         => true,
+					'totals'        => true,
+				),
+				'pending_in'      => __( '1 salida (F1-06).', 'orp-print' ),
 			),
 			'completo'        => array(
-				'label'       => __( 'Completo', 'orp-print' ),
-				'description' => __( 'Ticket con todos los campos en una sola salida, al crear el pedido.', 'orp-print' ),
-				'settings'    => array(
+				'label'           => __( 'Completo', 'orp-print' ),
+				'description'     => __( 'Ticket con todos los campos en una sola salida, al crear el pedido.', 'orp-print' ),
+				'settings'        => array(
 					'trigger_states' => array( 'created' ),
 					'dedupe_scope'   => 'order',
 					'paper_width_mm' => 80,
@@ -55,7 +63,21 @@ final class Presets {
 					'poll_interval'  => 10,
 					'sound_alert'    => false,
 				),
-				'pending_in'  => __( 'Plantilla con todos los campos (F1-03) y 1 salida (F1-06).', 'orp-print' ),
+				'template_fields' => array(
+					'logo'          => true,
+					'business_name' => true,
+					'datetime'      => true,
+					'order_number'  => true,
+					'customer'      => true,
+					'phone'         => true,
+					'address'       => true,
+					'items'         => true,
+					'totals'        => true,
+					'qr'            => true,
+					'footer'        => true,
+					'not_invoice'   => true,
+				),
+				'pending_in'  => __( '1 salida (F1-06).', 'orp-print' ),
 			),
 			'cocina_cliente'  => array(
 				'label'       => __( 'Cocina + cliente', 'orp-print' ),
@@ -70,15 +92,14 @@ final class Presets {
 					'poll_interval'  => 10,
 					'sound_alert'    => true,
 				),
-				'pending_in'  => __( 'Las dos plantillas (F1-03) y las 2 salidas (F1-06).', 'orp-print' ),
+				'pending_in'  => __( 'Las dos plantillas por rol (fuera de V1, Doc/04 §2.8) y las 2 salidas (F1-06): en V1 se aplica la plantilla vigente única.', 'orp-print' ),
 			),
 			'personalizado'   => array(
 				'label'       => __( 'Personalizado', 'orp-print' ),
 				'description' => __( 'Sin cambios automáticos: los ajustes de instancia mandan.', 'orp-print' ),
 				'settings'    => array(),
 				'pending_in'  => '',
-			),
-		);
+			),		);
 	}
 
 	/** Datos de un preset concreto, o null si no existe. */

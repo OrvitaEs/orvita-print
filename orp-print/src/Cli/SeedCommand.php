@@ -13,7 +13,7 @@ declare(strict_types=1);
 namespace Orvita\PrintBridge\Cli;
 
 use Orvita\PrintBridge\Domain\DestinationRepository;
-use Orvita\PrintBridge\Domain\DocumentBuilder;
+use Orvita\PrintBridge\Template\DocumentBuilder;
 use Orvita\PrintBridge\Domain\JobFactory;
 use Orvita\PrintBridge\Rest\Auth;
 use Orvita\PrintBridge\Support\Clock;
