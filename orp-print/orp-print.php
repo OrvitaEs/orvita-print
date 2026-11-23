@@ -34,6 +34,9 @@ Orvita\PrintBridge\Plugin::register_autoloader();
 // Activación: esquema con dbDelta y capacidad manage_orp_print para administrator.
 register_activation_hook( __FILE__, array( 'Orvita\PrintBridge\Install\Activator', 'activate' ) );
 
+// Desactivación: retira el cron del Reaper (F1-09).
+register_deactivation_hook( __FILE__, array( 'Orvita\PrintBridge\Domain\Reaper', 'deactivate' ) );
+
 // Arranque del plugin cuando todos los plugins están cargados.
 add_action( 'plugins_loaded', static function (): void {
 	Orvita\PrintBridge\Plugin::boot();

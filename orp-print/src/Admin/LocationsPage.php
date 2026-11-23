@@ -62,7 +62,53 @@ final class LocationsPage {
 				check_admin_referer( 'orp_default_location_' . $id );
 				self::set_default( $id );
 				break;
+
+			// F1-07: genera un código de emparejamiento para el local.
+			case 'pair_code':
+				$id = isset( $_GET['id'] ) ? absint( $_GET['id'] ) : 0;
+				check_admin_referer( 'orp_pair_code_' . $id );
+				self::pair_code( $id );
+				break;
 		}
+	}
+
+	/**
+	 * Genera un código de emparejamiento (F1-07): 6 dígitos, 10 minutos,
+	 * 5 intentos. Se muestra en el aviso y queda como «código vigente» en la
+	 * tabla hasta que se use, caduque o se bloquee; el agente lo teclea con
+	 * `orvitaprint pair --server <URL> <código>`.
+	 */
+	private static function pair_code( int $id ): void {
+		$location = LocationRepository::get( $id );
+
+		if ( null === $location ) {
+			add_settings_error( 'orp-locations', 'orp_pairing_not_found', __( 'El local no existe: no se generó el código.', 'orp-print' ), 'error' );
+
+			return;
+		}
+
+		$created = \Orvita\PrintBridge\Domain\PairingCodes::create( $id, (int) get_current_user_id() );
+
+		if ( null === $created ) {
+			add_settings_error( 'orp-locations', 'orp_pairing_failed', __( 'No se pudo generar el código de emparejamiento. Vuelve a intentarlo.', 'orp-print' ), 'error' );
+
+			return;
+		}
+
+		$expires = strtotime( $created['expires_at'] . ' UTC' );
+
+		add_settings_error(
+			'orp-locations',
+			'orp_pairing_created',
+			sprintf(
+				/* translators: 1: nombre del local, 2: código de 6 dígitos, 3: hora de caducidad local. */
+				__( 'Código de emparejamiento para «%1$s»: %2$s (caduca a las %3$s). Solo vale para este local y un solo agente; el agente lo teclea con orvitaprint pair --server <URL> %2$s.', 'orp-print' ),
+				(string) $location['name'],
+				(string) $created['code'],
+				false !== $expires ? wp_date( 'H:i', $expires ) : '—'
+			),
+			'updated'
+		);
 	}
 
 	/** Crea o actualiza el local enviado por POST. */
@@ -325,12 +371,13 @@ final class LocationsPage {
 						<th><?php esc_html_e( 'Prioridad', 'orp-print' ); ?></th>
 						<th><?php esc_html_e( 'Reglas', 'orp-print' ); ?></th>
 						<th><?php esc_html_e( 'Estado', 'orp-print' ); ?></th>
+						<th><?php esc_html_e( 'Emparejamiento', 'orp-print' ); ?></th>
 						<th><?php esc_html_e( 'Acciones', 'orp-print' ); ?></th>
 					</tr>
 				</thead>
 				<tbody>
 					<?php if ( array() === $locations ) : ?>
-						<tr><td colspan="6"><?php esc_html_e( 'Sin locales todavía. Crea el primero arriba.', 'orp-print' ); ?></td></tr>
+						<tr><td colspan="7"><?php esc_html_e( 'Sin locales todavía. Crea el primero arriba.', 'orp-print' ); ?></td></tr>
 					<?php else : ?>
 						<?php foreach ( $locations as $location ) : ?>
 							<?php
@@ -348,6 +395,23 @@ final class LocationsPage {
 								<td><?php echo esc_html( (string) $location['priority'] ); ?></td>
 								<td><?php echo esc_html( self::rules_summary( (string) $location['rules'] ) ); ?></td>
 								<td><?php echo esc_html( 1 === (int) $location['enabled'] ? __( 'Activo', 'orp-print' ) : __( 'Inactivo', 'orp-print' ) ); ?></td>
+								<td>
+									<?php
+									$pairing = \Orvita\PrintBridge\Domain\PairingCodes::latest_valid( $id );
+									if ( null !== $pairing ) {
+										$pairing_expires = strtotime( (string) $pairing->expires_at . ' UTC' );
+										echo '<code style="font-size:1.2em">' . esc_html( (string) $pairing->code ) . '</code> ';
+										printf(
+											/* translators: %s: hora de caducidad local. */
+											esc_html__( 'vigente hasta las %s', 'orp-print' ),
+											esc_html( false !== $pairing_expires ? wp_date( 'H:i', $pairing_expires ) : '—' )
+										);
+									} else {
+										esc_html_e( 'sin código vigente', 'orp-print' );
+									}
+									?>
+									· <a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin.php?page=' . Menu::SLUG_LOCATIONS . '&orp_action=pair_code&id=' . $id ), 'orp_pair_code_' . $id ) ); ?>"><?php esc_html_e( 'Generar código', 'orp-print' ); ?></a>
+								</td>
 								<td>
 									<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . Menu::SLUG_LOCATIONS . '&edit=' . $id ) ); ?>"><?php esc_html_e( 'Editar', 'orp-print' ); ?></a> |
 									<a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin.php?page=' . Menu::SLUG_LOCATIONS . '&orp_action=toggle&id=' . $id ), 'orp_toggle_location_' . $id ) ); ?>"><?php echo esc_html( $toggle ); ?></a> |

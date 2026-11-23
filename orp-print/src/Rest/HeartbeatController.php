@@ -48,44 +48,14 @@ final class HeartbeatController {
 
 		self::touch_agent( (int) $agent['id'], $agent_version, $platform );
 
-		$upserted = 0;
-		$rejected = 0;
 		$last_error = (string) $request->get_param( 'last_error' );
 
 		if ( '' !== $last_error ) {
 			Logger::log( 'warning', 'agents', 'El agente reporta un error.', null, (int) $agent['id'], array( 'last_error' => sanitize_text_field( $last_error ) ) );
 		}
 
-		foreach ( $destinations as $destination ) {
-			if ( ! is_array( $destination ) ) {
-				++$rejected;
-				continue;
-			}
-
-			$role         = sanitize_key( (string) ( $destination['role'] ?? '' ) );
-			$printer_name = sanitize_text_field( (string) ( $destination['printer_name'] ?? '' ) );
-
-			if ( '' === $role || '' === $printer_name ) {
-				++$rejected;
-				continue;
-			}
-
-			$label  = sanitize_text_field( (string) ( $destination['label'] ?? '' ) );
-			$copies = (int) ( $destination['copies'] ?? 1 );
-
-			DestinationRepository::upsert(
-				(int) $agent['location_id'],
-				array(
-					'role'         => $role,
-					'label'        => '' !== $label ? $label : $role,
-					'printer_name' => $printer_name,
-					'copies'       => max( 1, min( 99, $copies ) ),
-					'enabled'      => ! empty( $destination['enabled'] ),
-				)
-			);
-
-			++$upserted;
-		}
+		// Saneado y upsert compartidos con POST /pair (F1-07): una sola lógica.
+		$upsert_many = DestinationRepository::upsert_many( (int) $agent['location_id'], $destinations );
 
 		return new \WP_REST_Response(
 			array(

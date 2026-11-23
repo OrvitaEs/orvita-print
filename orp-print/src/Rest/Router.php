@@ -47,7 +47,8 @@ final class Router {
 		HeartbeatController::register();
 		ConfigController::register();
 
-		// POST /pair se implanta en F1-07; en F0 el token se siembra con `wp orp seed`.
+		// POST /pair — pública junto a /health (F1-07, Doc/04 §5.2).
+		PairController::register();
 	}
 
 	/** Respuesta de salud y versiones (Doc/04 §5.1). */

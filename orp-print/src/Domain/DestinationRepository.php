@@ -68,6 +68,54 @@ final class DestinationRepository {
 		}
 	}
 
+	/**
+	 * Upsert en lote de las salidas de un cuerpo (heartbeat y pair, F1-07):
+	 * saneado y cotas idénticos en ambos caminos (Doc/04 §5.2 y §5.3).
+	 *
+	 * @param array<mixed> $destinations Lista cruda del cuerpo.
+	 * @return array{upserted: int, rejected: int} Aceptadas y descartadas.
+	 */
+	public static function upsert_many( int $location_id, array $destinations ): array {
+		$upserted  = 0;
+		$rejected  = 0;
+
+		foreach ( $destinations as $destination ) {
+			if ( ! is_array( $destination ) ) {
+				++$rejected;
+				continue;
+			}
+
+			$role         = sanitize_key( (string) ( $destination['role'] ?? '' ) );
+			$printer_name = sanitize_text_field( (string) ( $destination['printer_name'] ?? '' ) );
+
+			if ( '' === $role || '' === $printer_name ) {
+				++$rejected;
+				continue;
+			}
+
+			$label  = sanitize_text_field( (string) ( $destination['label'] ?? '' ) );
+			$copies = (int) ( $destination['copies'] ?? 1 );
+
+			self::upsert(
+				$location_id,
+				array(
+					'role'         => $role,
+					'label'        => '' !== $label ? $label : $role,
+					'printer_name' => $printer_name,
+					'copies'       => max( 1, min( 99, $copies ) ),
+					'enabled'      => ! empty( $destination['enabled'] ),
+				)
+			);
+
+			++$upserted;
+		}
+
+		return array(
+			'upserted' => $upserted,
+			'rejected' => $rejected,
+		);
+	}
+
 	/** Salidas de un local. */
 	public static function for_location( int $location_id, bool $only_enabled = false ): array {
 		global $wpdb;

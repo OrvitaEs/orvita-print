@@ -54,6 +54,7 @@ final class Plugin {
 		// plantilla (F1-03) y vista previa/impresión manual (F1-04).
 		Admin\Menu::register();
 		Admin\SettingsPage::register();
+		Admin\JobsPage::register();
 		Admin\LocationsPage::register();
 		Admin\TemplatePage::register();
 		Admin\PreviewPage::register();
@@ -63,6 +64,9 @@ final class Plugin {
 		// Disparo automático de trabajos desde el pedido (F1-05): creación,
 		// checkout clásico y de bloques, estados configurados y cancelación.
 		Domain\OrderTrigger::register();
+
+		// Reaper (F1-09): cron horario + ejecución perezosa en rest_api_init.
+		Domain\Reaper::register();
 
 		// Comando de siembra para F0: `wp orp seed` (F0-08).
 		if ( defined( 'WP_CLI' ) && \WP_CLI ) {

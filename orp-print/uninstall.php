@@ -33,7 +33,7 @@ foreach ( array( 'logs', 'destinations', 'jobs', 'pairing_codes', 'agents', 'loc
 	$wpdb->query( "DROP TABLE IF EXISTS {$prefix}{$suffix}" );
 }
 
-foreach ( array( 'orp_db_version', 'orp_settings', 'orp_template', 'orp_template_version', 'orp_config_version' ) as $option ) {
+foreach ( array( 'orp_db_version', 'orp_settings', 'orp_template', 'orp_template_version', 'orp_config_version', 'orp_expired_unread' ) as $option ) {
 	delete_option( $option );
 }
 
@@ -45,14 +45,22 @@ if ( $role instanceof WP_Role ) {
 	$role->remove_cap( 'manage_orp_print' );
 }
 
-// B6: transients del límite de peticiones por token (orp_rl_*) y sus timeouts,
+// B6: transients del límite de peticiones por token (orp_rl_*), del throttle
+// de /pair por IP (orp_pair_rl_*), del lazy run del Reaper y sus timeouts,
 // tanto en la tabla de opciones como en la caché de objetos.
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL -- Operación de desinstalación.
 $wpdb->query(
 	"DELETE FROM {$wpdb->options}
 	  WHERE option_name LIKE '\\_transient\\_orp\\_rl\\_%'
-	     OR option_name LIKE '\\_transient\\_timeout\\_orp\\_rl\\_%'"
+	     OR option_name LIKE '\\_transient\\_timeout\\_orp\\_rl\\_%'
+	     OR option_name LIKE '\\_transient\\_orp\\_pair\\_rl\\_%'
+	     OR option_name LIKE '\\_transient\\_timeout\\_orp\\_pair\\_rl\\_%'
+	     OR option_name = '_transient_orp_reaper_lastrun'
+	     OR option_name = '_transient_timeout_orp_reaper_lastrun'"
 );
+
+// Cron del Reaper (F1-09): desinstalarlo retira el evento programado.
+wp_clear_scheduled_hook( 'orp_reaper_hourly' );
 
 // Si hay caché de objetos (redis/memcached), los transients viven fuera de wp_options.
 wp_cache_flush();

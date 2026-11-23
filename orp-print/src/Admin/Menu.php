@@ -24,6 +24,7 @@ final class Menu {
 
 	/** Slug del menú principal. */
 	public const SLUG_SETTINGS  = 'orp-print';
+	public const SLUG_JOBS      = 'orp-jobs';
 	public const SLUG_LOCATIONS = 'orp-locations';
 	public const SLUG_TEMPLATE  = 'orp-template';
 	public const SLUG_PREVIEW   = 'orp-preview';
@@ -52,6 +53,15 @@ final class Menu {
 			ORP_CAPABILITY,
 			self::SLUG_SETTINGS,
 			array( SettingsPage::class, 'render' )
+		);
+
+		add_submenu_page(
+			self::SLUG_SETTINGS,
+			__( 'Cola', 'orp-print' ),
+			__( 'Cola', 'orp-print' ),
+			ORP_CAPABILITY,
+			self::SLUG_JOBS,
+			array( JobsPage::class, 'render' )
 		);
 
 		add_submenu_page(
