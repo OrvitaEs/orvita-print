@@ -2,3 +2,11 @@ bin/
 obj/
 .vs/
 *.user
+
+# Claves privadas de release (F3-02/F3-03): NUNCA en el repositorio. Viven fuera del repo
+# (ver agent/tools/Orvita.Print.ReleaseTools/README.md) — esto es defensa en profundidad.
+*orp-license-private.pem
+*orp-manifest-private-seed.key
+orvita-release-keys/
+license.dat
+latest.json

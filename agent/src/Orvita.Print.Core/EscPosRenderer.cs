@@ -356,12 +356,6 @@ public sealed class EscPosRenderer
             return;
         }
 
-        if (widthDots > EscPosRendererOptions.MaxImageWidthDots)
-        {
-            Log?.Invoke($"El logo declara {widthDots} puntos, por encima del máximo del contrato " +
-                        $"({EscPosRendererOptions.MaxImageWidthDots}); la impresora recortará el exceso.");
-        }
-
         var rowBytes = (widthDots + 7) / 8;
         if (bitmap.Length < rowBytes)
         {
@@ -376,7 +370,47 @@ public sealed class EscPosRenderer
                         $"(ancho {widthDots} = {rowBytes} bytes/fila); se descartan.");
         }
 
+        // F2-13 (decisión documentada): un logo más ancho que el máximo del contrato (384 puntos)
+        // se RECORTA POR LA DERECHA hasta el máximo — nunca bytes por encima del papel de 80 mm,
+        // que el firmware de algunas impresoras interpreta como basura o desalinea la fila.
+        if (widthDots > EscPosRendererOptions.MaxImageWidthDots)
+        {
+            Log?.Invoke($"El logo declara {widthDots} puntos, por encima del máximo del contrato " +
+                        $"({EscPosRendererOptions.MaxImageWidthDots}); se recorta POR LA DERECHA al máximo " +
+                        $"(columnas {EscPosRendererOptions.MaxImageWidthDots + 1}–{widthDots} descartadas).");
+            bitmap = CropRight(bitmap, widthDots, EscPosRendererOptions.MaxImageWidthDots);
+            widthDots = EscPosRendererOptions.MaxImageWidthDots;
+        }
+
         builder.RasterImage(bitmap, widthDots);
+    }
+
+    /// <summary>
+    /// Recorta un mapa de bits de 1 bpp por la DERECHA: conserva las <paramref name="toWidth"/>
+    /// columnas izquierdas de cada fila (bit alto = píxel izquierdo, MSB primero), con las filas
+    /// de origen rellenadas a <c>ceil(fromWidth/8)</c> bytes y las de destino a
+    /// <c>ceil(toWidth/8)</c>. Las filas incompletas de origen quedan fuera (el renderizador ya
+    /// avisó de ellas antes de llamar aquí).
+    /// </summary>
+    private static byte[] CropRight(byte[] bitmap, int fromWidth, int toWidth)
+    {
+        var fromRowBytes = (fromWidth + 7) / 8;
+        var toRowBytes = (toWidth + 7) / 8;
+        var rows = bitmap.Length / fromRowBytes;
+        var cropped = new byte[rows * toRowBytes];
+
+        // Máscara del último byte de cada fila destino: se conservan los bits ALTOS
+        // (columnas más a la izquierda). Si toWidth es múltiplo de 8, la fila queda completa.
+        var lastBits = toWidth & 7;
+        var lastMask = lastBits == 0 ? (byte)0xFF : (byte)(0xFF << (8 - lastBits));
+
+        for (var row = 0; row < rows; row++)
+        {
+            Array.Copy(bitmap, row * fromRowBytes, cropped, row * toRowBytes, toRowBytes - 1);
+            cropped[(row * toRowBytes) + toRowBytes - 1] = (byte)(bitmap[(row * fromRowBytes) + toRowBytes - 1] & lastMask);
+        }
+
+        return cropped;
     }
 
     private void RenderQr(EscPosBuilder builder, QrBlock qr, Encoding encoding)

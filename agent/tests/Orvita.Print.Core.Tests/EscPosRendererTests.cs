@@ -451,4 +451,72 @@ public sealed class EscPosRendererTests
         // meta.copies lo aplica el transporte, no el renderizador: exactamente una copia.
         Assert.Equal(1, CountOccurrences(bytes, Encoding.ASCII.GetBytes("Gracias por su pedido")));
     }
+
+    // ------------------------------------------------------------- colchón F2-13 (hallazgos del tester)
+
+    [Fact]
+    public void El_bloque_image_mas_ancha_que_384_se_recorta_por_la_derecha_con_aviso()
+    {
+        // 512 puntos → 64 bytes/fila; 2 filas completas de 0xFF (todos los píxeles encendidos).
+        var bitmap = Convert.ToBase64String(Enumerable.Repeat((byte)0xFF, 128).ToArray());
+        var logs = new List<string>();
+        var bytes = Render(Document(new ImageBlock { Data = bitmap, WidthDots = 512 }), logs: logs);
+
+        // Recortado por la derecha a 384 puntos: 48 bytes/fila (xL=48, xH=0), 2 filas (yL=2).
+        var header = new byte[] { 0x1D, 0x76, 0x30, 0x00, 0x30, 0x00, 0x02, 0x00 };
+        var position = bytes.AsSpan().IndexOf(header);
+        Assert.True(position >= 0, $"No se encontró la cabecera GS v 0 del raster recortado en {Convert.ToHexString(bytes)}");
+
+        // Tras la cabecera: exactamente 96 bytes de datos y NINGUNO más (nada por encima de 384).
+        var data = bytes[(position + header.Length)..];
+        Assert.Equal(96, data.Length);
+        Assert.All(data, b => Assert.Equal(0xFF, b));
+
+        Assert.Contains(logs, l => l.Contains("recorta") && l.Contains("384"));
+    }
+
+    [Fact]
+    public void El_bloque_image_deja_las_filas_sobrantes_fuera_con_aviso()
+    {
+        // Ancho 12 → 2 bytes/fila; 5 bytes → 2 filas completas + 1 byte sobrante.
+        var logs = new List<string>();
+        var bytes = Render(Document(new ImageBlock { Data = Convert.ToBase64String([0xFF, 0xF0, 0x0F, 0xFF, 0xAA]), WidthDots = 12 }), logs: logs);
+
+        // yL/yH = 2 filas: el byte sobrante no se envía.
+        AssertContains(bytes, [0x1D, 0x76, 0x30, 0x00, 0x02, 0x00, 0x02, 0x00]);
+        AssertContains(bytes, [0xFF, 0xF0, 0x0F, 0xFF]);
+        Assert.Equal(2 + 8 + 4, bytes.Length); // ESC @ + cabecera raster + 4 bytes de datos
+        Assert.Contains(logs, l => l.Contains("1 byte(s) fuera de filas completas"));
+    }
+
+    [Fact]
+    public void El_bloque_barcode_CODE128_de_255_bytes_justo_se_imprime()
+    {
+        // Límite GS k: payload = prefijo «{B» + 253 caracteres = 255 bytes → se imprime.
+        var bytes = Render(Document(new BarcodeBlock { Value = new string('A', 253), Symbology = BarcodeSymbology.Code128 }));
+        AssertContains(bytes, [0x1D, 0x6B, 0x49]);
+        AssertContains(bytes, Encoding.ASCII.GetBytes("{B" + new string('A', 253)));
+    }
+
+    [Fact]
+    public void El_bloque_barcode_CODE128_de_mas_de_255_bytes_se_descarta_con_aviso()
+    {
+        var logs = new List<string>();
+        var bytes = Render(Document(new BarcodeBlock { Value = new string('A', 254), Symbology = BarcodeSymbology.Code128 }), logs: logs);
+
+        AssertNotContains(bytes, [0x1D, 0x6B]);
+        Assert.Contains(logs, l => l.Contains("demasiado largo") && l.Contains("255"));
+    }
+
+    [Fact]
+    public void El_emoji_fuera_del_BMP_se_sustituye_por_seguro_sin_excepcion()
+    {
+        // Par sustituto U+1F355 (🍕): el EncoderFallback lo registra COMPLETO (los dos chars) y
+        // sustituye por «?» — nunca bytes inválidos ni excepción (Doc/05 §4.3).
+        var logs = new List<string>();
+        var bytes = Render(Document(new TextBlock { Value = "Pizza 🍕 grande" }), logs: logs);
+
+        AssertContains(bytes, Cp850.GetBytes("Pizza ? grande\n"));
+        Assert.Contains(logs, l => l.Contains("🍕") && l.Contains("sustituidos"));
+    }
 }
