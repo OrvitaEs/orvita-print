@@ -5,69 +5,117 @@
         xmlns:v="using:Orvita.Print.Gui.Views"
         x:Class="Orvita.Print.Gui.Views.QueueView"
         x:DataType="vm:QueueViewModel">
-  <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="0,8,0,0">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel MaxWidth="880">
 
-    <!-- Aviso de errores no vistos (persistente hasta que el usuario los abra, Doc/08 §4.2). -->
-    <Border Grid.Row="0" IsVisible="{Binding BannerVisible}" Padding="10,6" CornerRadius="4" Background="#FDECEA">
-      <StackPanel Orientation="Horizontal" Spacing="10">
-        <TextBlock Text="{Binding BannerText}" FontWeight="Bold" Foreground="#C62828" VerticalAlignment="Center" />
-        <Button Command="{Binding MarkAllSeenCommand}" Content="Marcar vistos" />
+      <!-- Cabecera (GUI-09): tile azul con el icono de impresora + botón Actualizar arriba
+           a la derecha. El auto-refresco de 3 s NO cambia ( vive en MainWindow.axaml.cs). -->
+      <v:PageHeader Icon="{StaticResource Icon.Printer}"
+                    Title="Cola de impresión"
+                    Subtitle="Gestiona la cola de trabajos de impresión">
+        <v:PageHeader.Actions>
+          <Button Classes="secondary" Click="OnRefreshClick">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Path Data="{StaticResource Icon.Refresh}" Width="15" Height="15"
+                    Stretch="Uniform" Fill="{StaticResource App.Navy.Brush}"/>
+              <TextBlock Text="Actualizar"/>
+            </StackPanel>
+          </Button>
+        </v:PageHeader.Actions>
+      </v:PageHeader>
+
+      <!-- Aviso de errores no vistos (persistente hasta que el usuario los abra, Doc/08 §4.2):
+           banner rojo con triángulo-aviso y «Marcar vistos» con borde rojo. -->
+      <Border Classes="banner-danger" IsVisible="{Binding BannerVisible}">
+        <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+          <Path Grid.Column="0" Data="{StaticResource Icon.Warning}" Width="18" Height="18"
+                Stretch="Uniform" Fill="{StaticResource App.Red.Brush}" VerticalAlignment="Center"/>
+          <TextBlock Grid.Column="1" Text="{Binding BannerText}" Foreground="{StaticResource App.Red.Brush}"
+                     FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,8,0" TextWrapping="Wrap"/>
+          <Button Grid.Column="2" Classes="danger" Command="{Binding MarkAllSeenCommand}" Content="Marcar vistos"/>
+        </Grid>
+      </Border>
+
+      <!-- Filtro por estado + búsqueda por nº de trabajo (Doc/08 §4.2). -->
+      <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,10">
+        <TextBlock Text="Estado:" VerticalAlignment="Center" FontSize="12"
+                   Foreground="{StaticResource App.Navy.Brush}"/>
+        <ComboBox ItemsSource="{Binding StateFilterOptions}"
+                  SelectedValue="{Binding StateFilter}"
+                  SelectedValueBinding="{Binding Value}"
+                  DisplayMemberBinding="{Binding Display}"
+                  MinWidth="170"/>
+        <TextBox Text="{Binding SearchText}" Watermark="Buscar por nº de trabajo…" MinWidth="190"/>
+        <Button Classes="secondary" Click="OnRefreshClick">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <Path Data="{StaticResource Icon.Refresh}" Width="14" Height="14"
+                  Stretch="Uniform" Fill="{StaticResource App.Navy.Brush}"/>
+            <TextBlock Text="Actualizar"/>
+          </StackPanel>
+        </Button>
+        <TextBlock Text="{Binding LastRefreshText}" VerticalAlignment="Center" FontSize="12"
+                   Foreground="{StaticResource App.Gray.Brush}"/>
       </StackPanel>
-    </Border>
 
-    <!-- Filtro por estado + búsqueda por nº de pedido (Doc/08 §4.2). -->
-    <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,8,0,8">
-      <TextBlock Text="Estado:" VerticalAlignment="Center" />
-      <ComboBox ItemsSource="{Binding StateFilterOptions}"
-                SelectedValue="{Binding StateFilter}"
-                SelectedValueBinding="{Binding Value}"
-                DisplayMemberBinding="{Binding Display}"
-                MinWidth="180" />
-      <TextBlock Text="Buscar pedido:" VerticalAlignment="Center" />
-      <TextBox Text="{Binding SearchText}" Watermark="#778899" MinWidth="160" />
-      <Button Content="Actualizar" Click="OnRefreshClick" />
-      <TextBlock Text="{Binding LastRefreshText}" VerticalAlignment="Center" Margin="8,0,0,0" Opacity="0.7" />
+      <!-- Tabla de trabajos (columnas y badges como antes) dentro de una tarjeta blanca. -->
+      <Border Classes="card" Padding="0,4,0,4">
+        <Grid RowDefinitions="Auto,*">
+          <Grid Grid.Row="0" ColumnDefinitions="90,120,60,150,150,70,*,150" Margin="14,10,14,8">
+            <TextBlock Grid.Column="0" Classes="table-header" Text="Pedido"/>
+            <TextBlock Grid.Column="1" Classes="table-header" Text="Salida / rol"/>
+            <TextBlock Grid.Column="2" Classes="table-header" Text="Copias"/>
+            <TextBlock Grid.Column="3" Classes="table-header" Text="Llegada"/>
+            <TextBlock Grid.Column="4" Classes="table-header" Text="Impresión"/>
+            <TextBlock Grid.Column="5" Classes="table-header" Text="Intentos"/>
+            <TextBlock Grid.Column="6" Classes="table-header" Text="Último error"/>
+            <TextBlock Grid.Column="7" Classes="table-header" Text="Estado"/>
+          </Grid>
+          <ListBox Grid.Row="1" Classes="table" ItemsSource="{Binding FilteredRows}" SelectedItem="{Binding SelectedJob}">
+            <ListBox.ItemTemplate>
+              <DataTemplate DataType="models:QueueJobRow">
+                <Grid ColumnDefinitions="90,120,60,150,150,70,*,150" Margin="0,1">
+                  <TextBlock Grid.Column="0" Text="{Binding OrderDisplay}" Foreground="{StaticResource App.Navy.Brush}"/>
+                  <TextBlock Grid.Column="1" Text="{Binding PrinterRole}" Foreground="{StaticResource App.Navy.Brush}"/>
+                  <TextBlock Grid.Column="2" Text="{Binding Copies}" Foreground="{StaticResource App.Navy.Brush}"/>
+                  <TextBlock Grid.Column="3" Text="{Binding CreatedAt, Converter={x:Static v:TimestampConverter.Instance}}" Foreground="{StaticResource App.Gray.Brush}"/>
+                  <TextBlock Grid.Column="4" Text="{Binding PrintedAt, Converter={x:Static v:TimestampConverter.Instance}}" Foreground="{StaticResource App.Gray.Brush}"/>
+                  <TextBlock Grid.Column="5" Text="{Binding Attempts}" Foreground="{StaticResource App.Gray.Brush}"/>
+                  <TextBlock Grid.Column="6" Text="{Binding LastErrorDisplay}" TextTrimming="CharacterEllipsis"
+                             Foreground="{StaticResource App.Red.Brush}"/>
+                  <Border Grid.Column="7" Classes="badge" HorizontalAlignment="Left"
+                          Background="{Binding StateColor, Converter={x:Static v:HexToBrushConverter.Instance}}">
+                    <TextBlock Text="{Binding StateLabel}" Foreground="White" FontSize="11" FontWeight="Medium"/>
+                  </Border>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+      </Border>
+
+      <!-- Estado vacío (GUI-09): icono de documento + texto; cuando la pipe/servidor no
+           responde, el texto es el mensaje de reconexión. -->
+      <Border Classes="card" Padding="28" IsVisible="{Binding ShowEmptyState}">
+        <StackPanel HorizontalAlignment="Center" Spacing="8">
+          <Path Data="{StaticResource Icon.Document}" Width="36" Height="36" Stretch="Uniform"
+                Fill="#9DB8D6" HorizontalAlignment="Center"/>
+          <TextBlock Text="{Binding EmptyStateText}" HorizontalAlignment="Center"
+                     Foreground="{StaticResource App.Gray.Brush}" TextWrapping="Wrap"
+                     TextAlignment="Center"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Detalle del trabajo: documento legible + marcas de tiempo completas (op queue.item). -->
+      <Border Classes="card" IsVisible="{Binding HasDetail}">
+        <StackPanel Spacing="6">
+          <TextBlock Text="{Binding DetailTitle}" FontWeight="Bold"
+                     Foreground="{StaticResource App.Navy.Brush}"/>
+          <TextBox Text="{Binding DetailText}" IsReadOnly="True" TextWrapping="Wrap" Height="150"
+                   FontFamily="Consolas, 'Cascadia Mono', monospace" FontSize="12"
+                   Background="#F7FAFD" BorderBrush="{StaticResource App.Card.Border}"
+                   ScrollViewer.VerticalScrollBarVisibility="Auto" AcceptsReturn="True"/>
+        </StackPanel>
+      </Border>
     </StackPanel>
-
-    <!-- Lista de trabajos: encabezado + filas con badge de estado coloreado. -->
-    <Grid Grid.Row="2" RowDefinitions="Auto,*">
-      <Grid Grid.Row="0" ColumnDefinitions="90,120,60,150,150,70,*,150" Margin="0,0,0,2">
-        <TextBlock Grid.Column="0" Text="Pedido" FontWeight="Bold" />
-        <TextBlock Grid.Column="1" Text="Salida / rol" FontWeight="Bold" />
-        <TextBlock Grid.Column="2" Text="Copias" FontWeight="Bold" />
-        <TextBlock Grid.Column="3" Text="Llegada" FontWeight="Bold" />
-        <TextBlock Grid.Column="4" Text="Impresión" FontWeight="Bold" />
-        <TextBlock Grid.Column="5" Text="Intentos" FontWeight="Bold" />
-        <TextBlock Grid.Column="6" Text="Último error" FontWeight="Bold" />
-        <TextBlock Grid.Column="7" Text="Estado" FontWeight="Bold" />
-      </Grid>
-      <ListBox Grid.Row="1" ItemsSource="{Binding FilteredRows}" SelectedItem="{Binding SelectedJob}">
-        <ListBox.ItemTemplate>
-          <DataTemplate DataType="models:QueueJobRow">
-            <Grid ColumnDefinitions="90,120,60,150,150,70,*,150" Margin="0,1">
-              <TextBlock Grid.Column="0" Text="{Binding OrderDisplay}" />
-              <TextBlock Grid.Column="1" Text="{Binding PrinterRole}" />
-              <TextBlock Grid.Column="2" Text="{Binding Copies}" />
-              <TextBlock Grid.Column="3" Text="{Binding CreatedAt, Converter={x:Static v:TimestampConverter.Instance}}" />
-              <TextBlock Grid.Column="4" Text="{Binding PrintedAt, Converter={x:Static v:TimestampConverter.Instance}}" />
-              <TextBlock Grid.Column="5" Text="{Binding Attempts}" />
-              <TextBlock Grid.Column="6" Text="{Binding LastErrorDisplay}" TextTrimming="CharacterEllipsis" Foreground="#C62828" />
-              <Border Grid.Column="7" HorizontalAlignment="Left" CornerRadius="8" Padding="8,2" Background="{Binding StateColor, Converter={x:Static v:HexToBrushConverter.Instance}}">
-                <TextBlock Text="{Binding StateLabel}" Foreground="White" FontSize="12" />
-              </Border>
-            </Grid>
-          </DataTemplate>
-        </ListBox.ItemTemplate>
-      </ListBox>
-    </Grid>
-
-    <!-- Detalle del trabajo: documento legible + marcas de tiempo completas (op queue.item). -->
-    <Grid Grid.Row="3" RowDefinitions="Auto,150" Margin="0,8,0,0">
-      <TextBlock Grid.Row="0" Text="{Binding DetailTitle}" FontWeight="Bold" Margin="0,0,0,4" />
-      <TextBox Grid.Row="1" Text="{Binding DetailText}" IsReadOnly="True" TextWrapping="Wrap"
-               FontFamily="Consolas, 'Cascadia Mono', monospace"
-               ScrollViewer.VerticalScrollBarVisibility="Auto"
-               AcceptsReturn="True" />
-    </Grid>
-  </Grid>
+  </ScrollViewer>
 </UserControl>

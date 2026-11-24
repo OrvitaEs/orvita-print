@@ -23,12 +23,12 @@ public static class TestAppBuilder
         .UseHeadless(new Avalonia.Headless.AvaloniaHeadlessPlatformOptions());
 }
 
-/// <summary>Humo de la ventana real (GUI-01): se construye, tiene las cuatro pestañas y la barra de estado.</summary>
+/// <summary>Humo de la ventana real (GUI-01 + restyle GUI-09): se construye, tiene las SEIS
+/// pestañas (barra lateral), la barra de estado con su punto y contenido en pantalla.</summary>
 public sealed class HeadlessWindowTests
 {
-    private readonly FakeManagementClient _client = new();
     [AvaloniaFact]
-    public void La_ventana_unica_tiene_las_cuatro_pestanas_y_barra_de_estado()
+    public void La_ventana_unica_tiene_las_seis_pestanas_y_barra_de_estado()
     {
         var vm = new Orvita.Print.Gui.ViewModels.MainViewModel(
             new FakeManagementClient(),
@@ -36,15 +36,21 @@ public sealed class HeadlessWindowTests
         var window = new MainWindow(vm, enableTray: false);
         window.Show();
 
-        // Las pestañas (Doc/08 §4): Cola, Salidas, Emparejamiento, Diagnóstico.
-        var tabNames = window.FindControl<Avalonia.Controls.TabControl>("Tabs")!.Items
+        // Barra lateral (Doc/08 §4 + GUI-09): Cola, Salidas, Emparejamiento, Diagnóstico,
+        // Configuración y Acerca de.
+        var tabs = window.FindControl<Avalonia.Controls.TabControl>("Tabs")!;
+        var tabNames = tabs.Items
             .OfType<Avalonia.Controls.TabItem>()
             .Select(tab => (string)tab.Header!)
             .ToList();
         Assert.Equal(new[] { "Cola", "Salidas", "Emparejamiento", "Diagnóstico" }, tabNames);
 
-        // La barra de estado existe y arranca consultando.
+        // La barra de estado existe (punto + texto) y arranca consultando.
         Assert.NotNull(window.FindControl<Avalonia.Controls.TextBlock>("StatusBar"));
+        Assert.NotNull(window.FindControl<Avalonia.Controls.Shapes.Ellipse>("StatusDot"));
+
+        // Hay contenido seleccionado en pantalla (el TabControl re-tematizado lo muestra).
+        Assert.NotNull(tabs.SelectedContent);
 
         window.Close();
     }
@@ -53,7 +59,8 @@ public sealed class HeadlessWindowTests
     public void La_ventana_abierta_refresca_el_estado_y_la_barra_lo_muestra()
     {
         // Respuesta DETERMINISTA para cada status (el OnOpened de la ventana ya pide uno):
-        _client.RespondOk(ManagementProtocol.Operations.Status, new
+        var client = new FakeManagementClient();
+        client.RespondOk(ManagementProtocol.Operations.Status, new
         {
             paired = true,
             poller_running = true,
@@ -64,7 +71,7 @@ public sealed class HeadlessWindowTests
             jobs_error = 0,
         });
         var vm = new Orvita.Print.Gui.ViewModels.MainViewModel(
-            _client,
+            client,
             new Orvita.Print.Gui.Preferences.InMemoryPreferenceStore());
         var window = new MainWindow(vm, enableTray: false);
 

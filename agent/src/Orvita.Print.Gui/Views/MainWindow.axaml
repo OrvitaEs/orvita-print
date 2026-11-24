@@ -5,32 +5,45 @@
         x:Class="Orvita.Print.Gui.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Title="Orvita Print"
-        Width="960" Height="660"
-        MinWidth="800" MinHeight="540"
+        Width="760" Height="640"
+        MinWidth="720" MinHeight="560"
         WindowStartupLocation="CenterScreen"
-        ShowInTaskbar="True">
+        ShowInTaskbar="True"
+        Background="{StaticResource App.Scene.Brush}">
 
-  <!-- El icono del ejecutable/ventana se añade en GUI-07 (build genera el .ico). Sin
-       recursos externos en XAML: todo el texto está aquí en español. -->
+  <!-- GUI-09: barra lateral izquierda azul (TabControl con TabStripPlacement=Left re-tematizado
+       en App.axaml) + escenario claro con tarjetas blancas + barra de estado inferior. El icono
+       del ejecutable/ventana se añadió en GUI-07; sin recursos externos: los iconos son
+       geometrías Path embebidas (Views/Icons.axaml). -->
 
-  <DockPanel Margin="8">
-    <!-- Barra de estado (Doc/08 §4.6): una sola línea con el estado derivado de status. -->
-    <Border DockPanel.Dock="Bottom" Padding="8,5" CornerRadius="4" Background="#F5F5F5">
-      <TextBlock x:Name="StatusBar" Text="{Binding StatusBarText}" TextWrapping="Wrap" FontWeight="SemiBold" />
+  <DockPanel>
+    <!-- Barra de estado (Doc/08 §4.6): punto verde/rojo + una sola línea de estado derivada
+         de status. Sin clic: la ventana no abre nada desde aquí. -->
+    <Border DockPanel.Dock="Bottom" Background="White" BorderBrush="{StaticResource App.Card.Border}"
+            BorderThickness="0,1,0,0" Padding="16,9">
+      <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
+        <Ellipse x:Name="StatusDot" Width="10" Height="10" VerticalAlignment="Center"
+                 Fill="{Binding IsConnected, Converter={x:Static v:ConnectionBrushConverter.Instance}}"/>
+        <TextBlock x:Name="StatusBar" Text="{Binding StatusBarText}" TextWrapping="Wrap"
+                   FontSize="12" Foreground="{StaticResource App.Navy.Brush}"
+                   VerticalAlignment="Center"/>
+      </StackPanel>
     </Border>
 
-    <TabControl x:Name="Tabs">
-      <TabItem Header="Cola">
-        <v:QueueView DataContext="{Binding Queue}" />
+    <!-- Pestañas convertidas en barra lateral (los temas de control de App.axaml dibujan la
+         franja azul y las pills). Icono por pestaña vía Tag → StreamGeometry. -->
+    <TabControl x:Name="Tabs" TabStripPlacement="Left">
+      <TabItem Header="Cola" Tag="{StaticResource Icon.Printer}">
+        <v:QueueView DataContext="{Binding Queue}"/>
       </TabItem>
-      <TabItem Header="Salidas">
-        <v:DestinationsView DataContext="{Binding Destinations}" />
+      <TabItem Header="Salidas" Tag="{StaticResource Icon.List}">
+        <v:DestinationsView DataContext="{Binding Destinations}"/>
       </TabItem>
-      <TabItem Header="Emparejamiento">
-        <v:PairingView DataContext="{Binding Pairing}" />
+      <TabItem Header="Emparejamiento" Tag="{StaticResource Icon.Link}">
+        <v:PairingView DataContext="{Binding Pairing}"/>
       </TabItem>
-      <TabItem Header="Diagnóstico">
-        <v:DiagnosticsView DataContext="{Binding Diagnostics}" />
+      <TabItem Header="Diagnóstico" Tag="{StaticResource Icon.Pulse}">
+        <v:DiagnosticsView DataContext="{Binding Diagnostics}"/>
       </TabItem>
     </TabControl>
   </DockPanel>

@@ -2,7 +2,264 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Orvita.Print.Gui.App"
              RequestedThemeVariant="Light">
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://Orvita.Print.Gui/Views/Icons.axaml"/>
+      </ResourceDictionary.MergedDictionaries>
+
+      <!-- Tokens de diseño (GUI-09): la paleta completa vive aquí y solo aquí. -->
+      <SolidColorBrush x:Key="App.Primary.Brush">#1976D2</SolidColorBrush>
+      <SolidColorBrush x:Key="App.Primary.Hover.Brush">#1565C0</SolidColorBrush>
+      <SolidColorBrush x:Key="App.Navy.Brush">#1A3C6E</SolidColorBrush>
+      <SolidColorBrush x:Key="App.Gray.Brush">#5B7189</SolidColorBrush>
+      <SolidColorBrush x:Key="App.Scene.Brush">#F2F7FC</SolidColorBrush>
+      <SolidColorBrush x:Key="App.Card.Border">#DCE8F5</SolidColorBrush>
+      <SolidColorBrush x:Key="App.Secondary.Border">#B9CDE4</SolidColorBrush>
+      <SolidColorBrush x:Key="App.Green.Brush">#2E7D32</SolidColorBrush>
+      <SolidColorBrush x:Key="App.Red.Brush">#C62828</SolidColorBrush>
+      <SolidColorBrush x:Key="App.Amber.Brush">#B26A00</SolidColorBrush>
+      <SolidColorBrush x:Key="App.Side.Pill">#2E6DA8</SolidColorBrush>
+      <SolidColorBrush x:Key="App.Side.Text">#C9DCF0</SolidColorBrush>
+      <LinearGradientBrush x:Key="App.Sidebar.Brush" StartPoint="0%,0%" EndPoint="0%,100%">
+        <GradientStop Offset="0" Color="#1B4F8A"/>
+        <GradientStop Offset="1" Color="#15406E"/>
+      </LinearGradientBrush>
+
+      <!-- ===================================================== navegación lateral (GUI-09)
+           El TabControl con TabStripPlacement=Left SE CONVIERTE en la barra lateral azul:
+           franja degradada #1B4F8A→#15406E con pills de selección y escenario claro a la
+           derecha. Los temas de control viven en Resources (no en Styles). El nombre de las
+           partes (PART_*) es el del tema de Fluent. -->
+      <ControlTheme x:Key="{x:Type TabControl}" TargetType="TabControl">
+      <Setter Property="Background" Value="{StaticResource App.Sidebar.Brush}"/>
+      <Setter Property="Padding" Value="20,18,22,20"/>
+      <Setter Property="ItemsPanel">
+        <Setter.Value>
+          <ItemsPanelTemplate>
+            <StackPanel Orientation="Vertical"/>
+          </ItemsPanelTemplate>
+        </Setter.Value>
+      </Setter>
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}">
+            <Grid ColumnDefinitions="Auto,*">
+              <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Disabled">
+                <ItemsPresenter Name="PART_ItemsPresenter"
+                                ItemsPanel="{TemplateBinding ItemsPanel}"
+                                Margin="10,14,10,10"/>
+              </ScrollViewer>
+              <Border Grid.Column="1" Background="{StaticResource App.Scene.Brush}" ClipToBounds="True">
+                <ContentPresenter Name="PART_SelectedContentHost"
+                                  Content="{TemplateBinding SelectedContent}"
+                                  Margin="{TemplateBinding Padding}"
+                                  HorizontalContentAlignment="Stretch"
+                                  VerticalContentAlignment="Stretch"/>
+              </Border>
+            </Grid>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+    </ControlTheme>
+
+    <!-- Item de la barra lateral: pill con icono 22 px + etiqueta 12 px, texto claro. -->
+    <ControlTheme x:Key="{x:Type TabItem}" TargetType="TabItem">
+      <Setter Property="Foreground" Value="{StaticResource App.Side.Text}"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Padding" Value="12,9"/>
+      <Setter Property="Margin" Value="0,2"/>
+      <Setter Property="MinWidth" Value="146"/>
+      <Setter Property="MinHeight" Value="42"/>
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="FontWeight" Value="Medium"/>
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Name="PART_LayoutRoot"
+                  Background="{TemplateBinding Background}"
+                  CornerRadius="{TemplateBinding CornerRadius}"
+                  Padding="{TemplateBinding Padding}">
+            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+              <Path Width="22" Height="22" Stretch="Uniform"
+                    Data="{TemplateBinding Tag}"
+                    Fill="{TemplateBinding Foreground}"/>
+              <ContentPresenter Name="PART_ContentPresenter"
+                                Content="{TemplateBinding Header}"
+                                FontSize="12"
+                                VerticalAlignment="Center"/>
+            </StackPanel>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:selected">
+        <Setter Property="Background" Value="{StaticResource App.Side.Pill}"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+      </Style>
+      <Style Selector="^:pointerover">
+        <Setter Property="Background" Value="#18FFFFFF"/>
+        <Setter Property="Foreground" Value="White"/>
+      </Style>
+      <Style Selector="^:pressed">
+        <Setter Property="Background" Value="#22FFFFFF"/>
+      </Style>
+    </ControlTheme>
+    </ResourceDictionary>
+  </Application.Resources>
+
   <Application.Styles>
-    <FluentTheme />
+    <FluentTheme/>
+
+    <!-- ============================================================= botones (GUI-09) -->
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="{StaticResource App.Primary.Brush}"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Padding" Value="14,7"/>
+      <Setter Property="MinHeight" Value="34"/>
+      <Setter Property="FontWeight" Value="Medium"/>
+    </Style>
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource App.Primary.Hover.Brush}"/>
+    </Style>
+    <Style Selector="Button.primary:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#0D47A1"/>
+    </Style>
+
+    <Style Selector="Button.secondary">
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="Foreground" Value="{StaticResource App.Navy.Brush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource App.Secondary.Border}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Padding" Value="12,6"/>
+      <Setter Property="MinHeight" Value="32"/>
+      <Setter Property="FontWeight" Value="Medium"/>
+    </Style>
+    <Style Selector="Button.secondary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource App.Scene.Brush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource App.Primary.Brush}"/>
+      <Setter Property="Foreground" Value="{StaticResource App.Primary.Hover.Brush}"/>
+    </Style>
+
+    <!-- Botón con borde rojo (acciones destructivas: «Marcar vistos», «Desemparejar»). -->
+    <Style Selector="Button.danger">
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="Foreground" Value="{StaticResource App.Red.Brush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource App.Red.Brush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Padding" Value="12,6"/>
+      <Setter Property="MinHeight" Value="32"/>
+      <Setter Property="FontWeight" Value="Medium"/>
+    </Style>
+    <Style Selector="Button.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#FDECEA"/>
+      <Setter Property="BorderBrush" Value="#B71C1C"/>
+      <Setter Property="Foreground" Value="#B71C1C"/>
+    </Style>
+
+    <!-- ============================================================== tarjetas/banners -->
+    <Style Selector="Border.card">
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="CornerRadius" Value="12"/>
+      <Setter Property="BorderBrush" Value="{StaticResource App.Card.Border}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Padding" Value="16"/>
+      <Setter Property="Margin" Value="0,0,0,12"/>
+    </Style>
+
+    <Style Selector="Border.banner-danger">
+      <Setter Property="Background" Value="#FDECEA"/>
+      <Setter Property="BorderBrush" Value="#F1B8B2"/>
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Padding" Value="12,10"/>
+      <Setter Property="Margin" Value="0,0,0,12"/>
+    </Style>
+    <Style Selector="Border.banner-warn">
+      <Setter Property="Background" Value="#FFF8E1"/>
+      <Setter Property="BorderBrush" Value="#FFE082"/>
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Padding" Value="12,10"/>
+      <Setter Property="Margin" Value="0,0,0,12"/>
+    </Style>
+    <Style Selector="Border.banner-info">
+      <Setter Property="Background" Value="#E8F1FB"/>
+      <Setter Property="BorderBrush" Value="#BBDEFB"/>
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Padding" Value="12,10"/>
+      <Setter Property="Margin" Value="0,0,0,12"/>
+    </Style>
+    <Style Selector="Border.status-ok">
+      <Setter Property="Background" Value="#E8F5E9"/>
+      <Setter Property="BorderBrush" Value="#A5D6A7"/>
+      <Setter Property="CornerRadius" Value="12"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Padding" Value="16"/>
+      <Setter Property="Margin" Value="0,0,0,12"/>
+    </Style>
+    <Style Selector="Border.status-warn">
+      <Setter Property="Background" Value="#FFF8E1"/>
+      <Setter Property="BorderBrush" Value="#FFE082"/>
+      <Setter Property="CornerRadius" Value="12"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Padding" Value="16"/>
+      <Setter Property="Margin" Value="0,0,0,12"/>
+    </Style>
+    <Style Selector="Border.status-danger">
+      <Setter Property="Background" Value="#FFF3E0"/>
+      <Setter Property="BorderBrush" Value="#FFB74D"/>
+      <Setter Property="CornerRadius" Value="12"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Padding" Value="16"/>
+      <Setter Property="Margin" Value="0,0,0,12"/>
+    </Style>
+
+    <!-- Badges pill (estados de cola y «Activa/Inactiva»). -->
+    <Style Selector="Border.badge">
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="Padding" Value="9,2"/>
+    </Style>
+
+    <!-- ============================================================== tipografía/campos -->
+    <Style Selector="TextBlock.card-title">
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="{StaticResource App.Navy.Brush}"/>
+    </Style>
+    <Style Selector="TextBlock.field-label">
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Foreground" Value="{StaticResource App.Gray.Brush}"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="Margin" Value="0,0,6,0"/>
+    </Style>
+    <Style Selector="TextBlock.hint">
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Foreground" Value="{StaticResource App.Gray.Brush}"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+    <Style Selector="TextBlock.table-header">
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="{StaticResource App.Gray.Brush}"/>
+    </Style>
+
+    <Style Selector="TextBox">
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="BorderBrush" Value="{StaticResource App.Secondary.Border}"/>
+    </Style>
+    <Style Selector="ComboBox">
+      <Setter Property="CornerRadius" Value="6"/>
+    </Style>
+
+    <!-- Listas dentro de tarjetas: sin caja propia. -->
+    <Style Selector="ListBox.table">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="4,0,4,8"/>
+    </Style>
   </Application.Styles>
 </Application>

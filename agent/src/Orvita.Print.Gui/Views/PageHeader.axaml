@@ -1,0 +1,29 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Orvita.Print.Gui.Views.PageHeader"
+             x:Name="HeaderRoot"
+             x:CompileBindings="False">
+
+  <!--
+    Cabecera común de las pestañas (GUI-09): icono en tile azul redondeado (#1976D2, icono
+    blanco) + título 20 px negrita #1A3C6E + subtítulo 12 px gris. A la derecha, los botones
+    de acción de la pestaña (ContentPresenter «Actions»). Sin lógica: solo dibuja.
+  -->
+  <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,16">
+    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12">
+      <Border Width="44" Height="44" CornerRadius="10"
+              Background="{StaticResource App.Primary.Brush}" VerticalAlignment="Center">
+        <Path Width="24" Height="24" Stretch="Uniform"
+              Data="{Binding #HeaderRoot.Icon}"
+              Fill="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+      </Border>
+      <StackPanel VerticalAlignment="Center" Spacing="1">
+        <TextBlock Text="{Binding #HeaderRoot.Title}" FontSize="20" FontWeight="Bold"
+                   Foreground="{StaticResource App.Navy.Brush}"/>
+        <TextBlock Text="{Binding #HeaderRoot.Subtitle}" FontSize="12"
+                   Foreground="{StaticResource App.Gray.Brush}"/>
+      </StackPanel>
+    </StackPanel>
+    <ContentPresenter Grid.Column="2" Content="{Binding #HeaderRoot.Actions}" VerticalAlignment="Center"/>
+  </Grid>
+</UserControl>

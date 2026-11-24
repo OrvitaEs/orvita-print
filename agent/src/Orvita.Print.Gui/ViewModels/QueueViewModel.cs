@@ -62,6 +62,17 @@ public partial class QueueViewModel : ObservableObject
     [ObservableProperty]
     private string? _loadError;
 
+    // ----------------------------------------------- señales para el dibujo (GUI-09)
+
+    [ObservableProperty]
+    private string _emptyStateText = string.Empty;
+
+    /// <summary>La tarjeta de estado vacío solo se muestra cuando no hay filas filtradas.</summary>
+    public bool ShowEmptyState => FilteredRows.Count == 0;
+
+    /// <summary>La tarjeta de detalle se muestra solo con un trabajo leído (o intentado).</summary>
+    public bool HasDetail => DetailText.Length > 0;
+
     /// <summary>Todas las filas del último refresco (sin filtrar). La vista enlaza <see cref="FilteredRows"/>.</summary>
     public ObservableCollection<QueueJobRow> FilteredRows { get; } = [];
 
@@ -107,13 +118,19 @@ public partial class QueueViewModel : ObservableObject
         }
         catch (Exception ex) when (MainViewModel.IsPipeFault(ex))
         {
+            // La pipe no responde: la tabla se vacía y el estado vacío muestra el aviso de
+            // reconexión (GUI-09). El outbox NO se toca: esto es solo la vista local.
             LoadError = "El servicio Orvita Print no está en ejecución: la cola local no está disponible.";
+            _rows.Clear();
+            ApplyFilters();
             return;
         }
 
         if (!response.Ok || response.Data is not { ValueKind: JsonValueKind.Object } data)
         {
             LoadError = response.Error is { } error ? $"La consulta de la cola falló: {error}" : "La consulta de la cola falló.";
+            _rows.Clear();
+            ApplyFilters();
             return;
         }
 
@@ -144,6 +161,18 @@ public partial class QueueViewModel : ObservableObject
             : $"Hay {unseen.Count} trabajos con incidencia sin revisar.";
     }
 
+    /// <summary>Refresca las señales del estado vacío y su texto (GUI-09, solo dibujo).</summary>
+    private void UpdateEmptyState()
+    {
+        EmptyStateText = LoadError
+            ?? (FilteredRows.Count == 0 ? "No hay trabajos en la cola con los filtros actuales." : string.Empty);
+        OnPropertyChanged(nameof(ShowEmptyState));
+    }
+
+    partial void OnLoadErrorChanged(string? value) => UpdateEmptyState();
+
+    partial void OnDetailTextChanged(string value) => OnPropertyChanged(nameof(HasDetail));
+
     /// <summary>Reaplica el filtro de estado y la búsqueda sobre las filas del último refresco.</summary>
     public void ApplyFilters()
     {
@@ -153,6 +182,8 @@ public partial class QueueViewModel : ObservableObject
         {
             FilteredRows.Add(row);
         }
+
+        UpdateEmptyState();
     }
 
     partial void OnSelectedJobChanged(QueueJobRow? value)
