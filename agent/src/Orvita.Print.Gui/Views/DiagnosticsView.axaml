@@ -4,32 +4,79 @@
         xmlns:v="using:Orvita.Print.Gui.Views"
         x:Class="Orvita.Print.Gui.Views.DiagnosticsView"
         x:DataType="vm:DiagnosticsViewModel">
-  <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="0,8,0,0">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel MaxWidth="880">
 
-    <!-- Resumen del doctor (§4.5: versiones, licencia, poller, cola). -->
-    <TextBox Grid.Row="0" Text="{Binding SummaryText}" IsReadOnly="True" TextWrapping="Wrap"
-             MinHeight="180" VerticalContentAlignment="Top" AcceptsReturn="True"
-             FontFamily="Consolas, 'Cascadia Mono', monospace" />
+      <!-- Cabecera (GUI-09): tile azul con el icono de pulso + Actualizar (primario). -->
+      <v:PageHeader Icon="{StaticResource Icon.Pulse}"
+                    Title="Diagnóstico"
+                    Subtitle="Consulta el estado y las últimas líneas del registro">
+        <v:PageHeader.Actions>
+          <Button Classes="primary" Click="OnLoadClick">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Path Data="{StaticResource Icon.Refresh}" Width="15" Height="15" Stretch="Uniform" Fill="White"/>
+              <TextBlock Text="Actualizar diagnóstico"/>
+            </StackPanel>
+          </Button>
+        </v:PageHeader.Actions>
+      </v:PageHeader>
 
-    <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,8,0,8">
-      <Button Content="Actualizar diagnóstico" Click="OnLoadClick" />
-      <Button Content="Generar ZIP de diagnóstico" Click="OnZipClick" />
-      <Button Content="Abrir carpeta" Click="OnOpenFolderClick" IsEnabled="{Binding ZipPath, Converter={x:Static v:NotNullConverter.Instance}}" />
-      <Button Content="Ver últimas líneas del log" Click="OnLogClick" />
-    </StackPanel>
-
-    <!-- Visor del log: el fichero lo lee la GUI (solo lectura); la ruta la dio la pipe.
-         El token y la BD NUNCA se leen ni se muestran (S-05). -->
-    <DockPanel Grid.Row="3">
-      <TextBlock DockPanel.Dock="Top" Text="{Binding Error}" Foreground="#C62828" TextWrapping="Wrap" />
-      <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,4">
-        <TextBlock FontWeight="Bold" Text="Últimas líneas del registro (solo lectura)" />
-        <TextBlock Text="{Binding LogPath}" FontSize="12" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+      <!-- Fila de acciones con iconos: ZIP (descarga), carpeta, log (lista). -->
+      <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+        <Button Classes="secondary" Click="OnZipClick">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <Path Data="{StaticResource Icon.Download}" Width="14" Height="14"
+                  Stretch="Uniform" Fill="{StaticResource App.Navy.Brush}"/>
+            <TextBlock Text="Generar ZIP de diagnóstico"/>
+          </StackPanel>
+        </Button>
+        <Button Classes="secondary" Click="OnOpenFolderClick"
+                IsEnabled="{Binding ZipPath, Converter={x:Static v:NotNullConverter.Instance}}">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <Path Data="{StaticResource Icon.Folder}" Width="14" Height="14"
+                  Stretch="Uniform" Fill="{StaticResource App.Navy.Brush}"/>
+            <TextBlock Text="Abrir carpeta"/>
+          </StackPanel>
+        </Button>
+        <Button Classes="secondary" Click="OnLogClick">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <Path Data="{StaticResource Icon.List}" Width="14" Height="14"
+                  Stretch="Uniform" Fill="{StaticResource App.Navy.Brush}"/>
+            <TextBlock Text="Ver últimas líneas del log"/>
+          </StackPanel>
+        </Button>
       </StackPanel>
-      <TextBox Text="{Binding LogText}" IsReadOnly="True" TextWrapping="NoWrap" AcceptsReturn="True"
-               FontFamily="Consolas, 'Cascadia Mono', monospace"
-               ScrollViewer.VerticalScrollBarVisibility="Auto"
-               ScrollViewer.HorizontalScrollBarVisibility="Auto" />
-    </DockPanel>
-  </Grid>
+
+      <!-- Error visible (sin servicio o fallo del doctor). -->
+      <Border Classes="banner-danger" IsVisible="{Binding Error, Converter={x:Static v:NotNullConverter.Instance}}">
+        <TextBlock Text="{Binding Error}" Foreground="{StaticResource App.Red.Brush}" TextWrapping="Wrap"/>
+      </Border>
+
+      <!-- Resumen del doctor (§4.5: versiones, licencia, poller, cola) en tarjeta. -->
+      <Border Classes="card">
+        <StackPanel Spacing="6">
+          <TextBlock Classes="card-title" Text="Resumen del diagnóstico"/>
+          <TextBox Text="{Binding SummaryText}" IsReadOnly="True" TextWrapping="Wrap"
+                   Height="210" VerticalContentAlignment="Top" AcceptsReturn="True"
+                   FontFamily="Consolas, 'Cascadia Mono', monospace" FontSize="12"
+                   Background="#F7FAFD" BorderBrush="{StaticResource App.Card.Border}"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Visor del log: el fichero lo lee la GUI (solo lectura); la ruta la dio la pipe.
+           El token y la BD NUNCA se leen ni se muestran (S-05). -->
+      <Border Classes="card">
+        <StackPanel Spacing="6">
+          <TextBlock Classes="card-title" Text="Últimas líneas del registro (solo lectura)"/>
+          <TextBlock Text="{Binding LogPath}" FontSize="12"
+                     Foreground="{StaticResource App.Gray.Brush}" TextTrimming="CharacterEllipsis"/>
+          <TextBox Text="{Binding LogText}" IsReadOnly="True" TextWrapping="NoWrap" AcceptsReturn="True"
+                   Height="260" FontFamily="Consolas, 'Cascadia Mono', monospace" FontSize="12"
+                   Background="#F7FAFD" BorderBrush="{StaticResource App.Card.Border}"
+                   ScrollViewer.VerticalScrollBarVisibility="Auto"
+                   ScrollViewer.HorizontalScrollBarVisibility="Auto"/>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
 </UserControl>
