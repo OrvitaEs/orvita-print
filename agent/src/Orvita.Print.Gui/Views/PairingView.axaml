@@ -8,8 +8,9 @@
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <Grid MaxWidth="720" RowDefinitions="Auto,Auto,Auto,Auto">
 
-      <!-- Cabecera (GUI-09): tile azul con icono de tienda. -->
-      <v:PageHeader Grid.Row="0" Icon="{StaticResource Icon.Store}"
+      <!-- Cabecera (GUI-12): tile azul con el MISMO icono que el item «Emparejamiento» del
+           menú lateral (cadena/enlace — MainWindow.axaml). -->
+      <v:PageHeader Grid.Row="0" Icon="{StaticResource Icon.Link}"
                     Title="Emparejamiento"
                     Subtitle="Estado de la conexión con la tienda"/>
 

@@ -16,11 +16,15 @@ using Xunit;
 
 namespace Orvita.Print.Gui.Tests;
 
-/// <summary>App headless para pruebas de UI de Avalonia (sin ventana real ni shell).</summary>
+/// <summary>App headless para pruebas de UI de Avalonia (sin ventana real ni shell).
+/// GUI-12: UseHeadlessDrawing=false → render con Skia + shaping real de texto; con el dibujo
+/// headless puro las métricas de texto son falsas (un título de 7 caracteres medía 340 px) y
+/// la cabecera desbordaba solo en pruebas, no en la GUI real.</summary>
 public static class TestAppBuilder
 {
     public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>()
-        .UseHeadless(new Avalonia.Headless.AvaloniaHeadlessPlatformOptions());
+        .UseSkia()
+        .UseHeadless(new Avalonia.Headless.AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false });
 }
 
 /// <summary>Humo de la ventana real (GUI-01 + restyle GUI-09): se construye, tiene las SEIS

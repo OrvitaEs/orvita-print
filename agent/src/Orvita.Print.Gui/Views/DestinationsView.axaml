@@ -9,8 +9,9 @@
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <Grid MaxWidth="1000" RowDefinitions="Auto,Auto,Auto,*,Auto">
 
-      <!-- Cabecera (GUI-09): tile azul con icono de impresora + Actualizar a la derecha. -->
-      <v:PageHeader Grid.Row="0" Icon="{StaticResource Icon.Printer}"
+      <!-- Cabecera (GUI-12): tile azul con el MISMO icono que el item «Salidas» del menú
+           lateral (lista — MainWindow.axaml) para que cabecera y menú coincidan. -->
+      <v:PageHeader Grid.Row="0" Icon="{StaticResource Icon.List}"
                     Title="Salidas"
                     Subtitle="Impresoras y copias de este equipo">
         <v:PageHeader.Actions>

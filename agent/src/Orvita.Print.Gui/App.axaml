@@ -272,11 +272,21 @@
       <Setter Property="MinHeight" Value="32"/>
     </Style>
 
-    <!-- Listas dentro de tarjetas: sin caja propia. -->
+    <!-- Listas dentro de tarjetas: sin caja propia. GUI-12: sin padding horizontal — las
+         tarjetas/filas deben quedar A RAS del borde del contenedor (alineadas con el tile de
+         la cabecera a la izquierda y con el botón «Actualizar» a la derecha); el hueco que
+         deja cada fila lo pone su propio Margin. -->
     <Style Selector="ListBox.table">
       <Setter Property="Background" Value="Transparent"/>
       <Setter Property="BorderThickness" Value="0"/>
-      <Setter Property="Padding" Value="4,0,4,8"/>
+      <Setter Property="Padding" Value="0,0,0,8"/>
+    </Style>
+    <Style Selector="ListBox.table ListBoxItem">
+      <Setter Property="Padding" Value="0"/>
+      <!-- GUI-12: el item se EXTiende al ancho de la lista (el Border tarjeta hereda el
+           estiramiento); sin esto, la tarjeta queda a su ancho deseado y su borde derecho
+           no coincide con el borde derecho de la cabecera/botón «Actualizar». -->
+      <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
     </Style>
   </Application.Styles>
 </Application>
