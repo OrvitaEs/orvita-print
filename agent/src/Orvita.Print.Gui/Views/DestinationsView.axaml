@@ -4,10 +4,10 @@
         xmlns:v="using:Orvita.Print.Gui.Views"
         x:Class="Orvita.Print.Gui.Views.DestinationsView"
         x:DataType="vm:DestinationsViewModel">
-  <!-- GUI-11 (responsive): Grid de filas Auto…* con MaxWidth 1000; la lista de tarjetas
-       crece en la fila * y el formulario queda abajo (Auto). -->
+  <!-- GUI-11 (responsive) / GUI-13 (fluido): Grid de filas Auto…* SIN MaxWidth; la lista de
+       tarjetas crece en la fila * y el formulario queda abajo (Auto). -->
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <Grid MaxWidth="1000" RowDefinitions="Auto,Auto,Auto,*,Auto">
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
 
       <!-- Cabecera (GUI-12): tile azul con el MISMO icono que el item «Salidas» del menú
            lateral (lista — MainWindow.axaml) para que cabecera y menú coincidan. -->

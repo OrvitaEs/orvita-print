@@ -282,11 +282,22 @@
       <Setter Property="Padding" Value="0,0,0,8"/>
     </Style>
     <Style Selector="ListBox.table ListBoxItem">
-      <Setter Property="Padding" Value="0"/>
       <!-- GUI-12: el item se EXTiende al ancho de la lista (el Border tarjeta hereda el
            estiramiento); sin esto, la tarjeta queda a su ancho deseado y su borde derecho
-           no coincide con el borde derecho de la cabecera/botón «Actualizar». -->
+           no coincide con el borde derecho de la cabecera/botón «Actualizar». GUI-13: el
+           Padding 0 SIGUE siendo la base (las tarjetas de Salidas lo necesitan: su aire
+           vertical lo pone su propio Margin); la clase extra «rows» lo sobreescribe. -->
+      <Setter Property="Padding" Value="0"/>
       <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+    </Style>
+    <!-- GUI-13 (aire vertical de filas): SOLO en las listas tipo TABLA (clase extra «rows»).
+         Separa el alineado horizontal (lo pone el item: 14 px, el MISMO inset que la
+         cabecera de columnas) del aire vertical (7 px arriba/abajo + MinHeight 40: las filas
+         «respiran» sin perder el alineado de bordes de GUI-12). Las listas de TARJETAS
+         (Salidas) no lo usan: su aire vertical lo da el Margin de cada tarjeta. -->
+    <Style Selector="ListBox.table.rows ListBoxItem">
+      <Setter Property="Padding" Value="14,7"/>
+      <Setter Property="MinHeight" Value="40"/>
     </Style>
   </Application.Styles>
 </Application>

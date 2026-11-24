@@ -4,18 +4,18 @@
         xmlns:v="using:Orvita.Print.Gui.Views"
         x:Class="Orvita.Print.Gui.Views.AboutView"
         x:DataType="vm:MainViewModel">
-  <!-- GUI-11 (responsive): MaxWidth 720 para legibilidad, PERO centrado en el área
-       (HorizontalAlignment Stretch + MaxWidth: llena con ventana pequeña, se centra al
-       maximizar); TextWrapping en todos los TextBlock para que nada desborde la tarjeta. -->
+  <!-- GUI-11 (responsive) / GUI-13 (fluido): SIN MaxWidth (antes 720 centrado — al
+       maximizar quedaba mal); el texto ocupa el ancho con el padding interior generoso de
+       la tarjeta (22 px); TextWrapping en todos los TextBlock para que nada desborde. -->
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <Grid MaxWidth="720" RowDefinitions="Auto,Auto,Auto">
+    <Grid RowDefinitions="Auto,Auto,Auto">
 
       <!-- Cabecera (GUI-09): tile azul con el icono de info. -->
       <v:PageHeader Grid.Row="0" Icon="{StaticResource Icon.Info}"
                     Title="Acerca de"
                     Subtitle="Orvita Print · impresión automática para WooCommerce"/>
 
-      <Border Grid.Row="1" Classes="card">
+      <Border Grid.Row="1" Classes="card" Padding="22">
         <StackPanel Spacing="8">
           <TextBlock Text="Orvita Print" FontSize="22" FontWeight="Bold"
                      Foreground="{StaticResource App.Navy.Brush}"/>

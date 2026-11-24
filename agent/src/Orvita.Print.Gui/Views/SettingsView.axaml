@@ -4,9 +4,11 @@
         xmlns:v="using:Orvita.Print.Gui.Views"
         x:Class="Orvita.Print.Gui.Views.SettingsView"
         x:DataType="vm:MainViewModel">
-  <!-- GUI-11 (responsive): MaxWidth 720 y centrado en el área (Stretch + MaxWidth). -->
+  <!-- GUI-11 (responsive) / GUI-13 (fluido): SIN MaxWidth; el texto ocupa el ancho con el
+       padding interior generoso de la tarjeta (22 px) para que las líneas largas no lleguen
+       al borde. -->
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <Grid MaxWidth="720" RowDefinitions="Auto,Auto,Auto,Auto">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto">
 
       <!-- Cabecera (GUI-09): tile azul con el icono de engranaje. -->
       <v:PageHeader Grid.Row="0" Icon="{StaticResource Icon.Gear}"
@@ -14,7 +16,7 @@
                     Subtitle="Preferencias de esta aplicación (el servicio se configura aparte)"/>
 
       <!-- Arranque: HKCU Run de la GUI (misma lógica de siempre, ahora con su pestaña). -->
-      <Border Grid.Row="1" Classes="card">
+      <Border Grid.Row="1" Classes="card" Padding="22">
         <StackPanel Spacing="6">
           <TextBlock Classes="card-title" Text="Arranque"/>
           <CheckBox Content="Iniciar la GUI con Windows" IsChecked="{Binding AutoStart}"/>
@@ -24,7 +26,7 @@
       </Border>
 
       <!-- Notificaciones: la preferencia vive en %LocalAppData%\OrvitaPrint\gui.json. -->
-      <Border Grid.Row="2" Classes="card">
+      <Border Grid.Row="2" Classes="card" Padding="22">
         <StackPanel Spacing="6">
           <TextBlock Classes="card-title" Text="Notificaciones"/>
           <CheckBox Content="Mostrar aviso al imprimir cada trabajo" IsChecked="{Binding NotifySuccess}"/>
@@ -34,7 +36,7 @@
       </Border>
 
       <!-- Información del servicio (solo lectura, pedida por la pipe vía doctor). -->
-      <Border Grid.Row="3" Classes="card">
+      <Border Grid.Row="3" Classes="card" Padding="22">
         <StackPanel Spacing="8">
           <Grid ColumnDefinitions="*,Auto">
             <TextBlock Classes="card-title" Text="Información del servicio (solo lectura)"/>

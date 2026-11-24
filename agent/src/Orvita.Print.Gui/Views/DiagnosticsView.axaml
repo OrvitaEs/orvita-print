@@ -4,10 +4,11 @@
         xmlns:v="using:Orvita.Print.Gui.Views"
         x:Class="Orvita.Print.Gui.Views.DiagnosticsView"
         x:DataType="vm:DiagnosticsViewModel">
-  <!-- GUI-11 (responsive): el visor del log vive en la fila * (crece con la ventana hasta
-       llenar el alto disponible); MaxWidth 1000. -->
+  <!-- GUI-11 (responsive) / GUI-13 (fluido): el visor del log vive en la fila * (crece con
+       la ventana hasta llenar el alto disponible) y TODO ocupa el ancho de la ventana
+       (sin MaxWidth, anclado a izquierda/arriba/derecha). -->
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <Grid MaxWidth="1000" RowDefinitions="Auto,Auto,Auto,Auto,*">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
 
       <!-- Cabecera (GUI-09): tile azul con el icono de pulso + Actualizar (primario). -->
       <v:PageHeader Grid.Row="0" Icon="{StaticResource Icon.Pulse}"

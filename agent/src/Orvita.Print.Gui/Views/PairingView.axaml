@@ -4,9 +4,10 @@
         xmlns:v="using:Orvita.Print.Gui.Views"
         x:Class="Orvita.Print.Gui.Views.PairingView"
         x:DataType="vm:PairingViewModel">
-  <!-- GUI-11 (responsive): MaxWidth 720 y centrado en el área (Stretch + MaxWidth). -->
+  <!-- GUI-11 (responsive) / GUI-13 (fluido): SIN MaxWidth — todo anclado a
+       izquierda/arriba/derecha; el texto ocupa el ancho con TextWrapping. -->
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <Grid MaxWidth="720" RowDefinitions="Auto,Auto,Auto,Auto">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto">
 
       <!-- Cabecera (GUI-12): tile azul con el MISMO icono que el item «Emparejamiento» del
            menú lateral (cadena/enlace — MainWindow.axaml). -->

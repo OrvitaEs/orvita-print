@@ -5,12 +5,13 @@
         xmlns:v="using:Orvita.Print.Gui.Views"
         x:Class="Orvita.Print.Gui.Views.QueueView"
         x:DataType="vm:QueueViewModel">
-  <!-- GUI-11 (responsive): la página es un Grid de filas Auto…* dentro de un ScrollViewer con
-       MaxWidth 1000: la tabla crece hasta ocupar el alto disponible (con ventana pequeña la
-       página hace scroll; maximizada, la tabla llena el hueco) y todo crece en anchura hasta
-       el MaxWidth, centrado cuando sobra sitio. -->
+  <!-- GUI-11 (responsive) / GUI-13 (fluido): la página es un Grid de filas Auto…* dentro de
+       un ScrollViewer SIN MaxWidth (anclado a izquierda/arriba/derecha): la tabla ocupa TODO
+       el ancho disponible (ventana − sidebar − 24 px por lado del shell) a cualquier tamaño,
+       maximizada incluida, y reparte el ancho extra entre columnas (la flexible «Último
+       error» es *). Conserva los MinWidth de los controles al encoger. -->
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <Grid MaxWidth="1000" RowDefinitions="Auto,Auto,Auto,*">
+    <Grid RowDefinitions="Auto,Auto,Auto,*">
 
       <!-- Cabecera (GUI-09): tile azul con el icono de impresora + botón Actualizar arriba
            a la derecha. El auto-refresco de 3 s NO cambia ( vive en MainWindow.axaml.cs). -->
@@ -78,10 +79,13 @@
               <TextBlock Grid.Column="6" Classes="table-header" Text="Último error"/>
               <TextBlock Grid.Column="7" Classes="table-header" Text="Estado"/>
             </Grid>
-            <ListBox Grid.Row="1" Classes="table" ItemsSource="{Binding FilteredRows}" SelectedItem="{Binding SelectedJob}">
+            <ListBox Grid.Row="1" Classes="table rows" ItemsSource="{Binding FilteredRows}" SelectedItem="{Binding SelectedJob}">
               <ListBox.ItemTemplate>
                 <DataTemplate DataType="models:QueueJobRow">
-                  <Grid ColumnDefinitions="90,120,60,150,150,70,*,150" Margin="0,1">
+                  <!-- GUI-13: sin margen propio — el aire vertical (7 px) y el inset
+                       horizontal (14 px, igual que la cabecera) los pone el ListBoxItem
+                       (App.axaml, clase «rows»); las columnas quedan alineadas con ella. -->
+                  <Grid ColumnDefinitions="90,120,60,150,150,70,*,150">
                     <TextBlock Grid.Column="0" Text="{Binding OrderDisplay}" Foreground="{StaticResource App.Navy.Brush}"/>
                     <TextBlock Grid.Column="1" Text="{Binding PrinterRole}" Foreground="{StaticResource App.Navy.Brush}"/>
                     <TextBlock Grid.Column="2" Text="{Binding Copies}" Foreground="{StaticResource App.Navy.Brush}"/>
