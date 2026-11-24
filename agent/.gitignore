@@ -16,3 +16,5 @@ installer/publish/
 installer/artifacts/*.msi
 installer/artifacts/*.wixpdb
 installer/PublishedFiles.wxs
+
+TestResults/
