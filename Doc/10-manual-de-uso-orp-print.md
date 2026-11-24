@@ -1,11 +1,11 @@
 # Manual de uso de Orvita Print (plugin `orp-print`)
 
-Manual completo de **instalación, configuración y uso** del plugin de WordPress/WooCommerce `orp-print` (namespace PHP `Orvita\PrintBridge`, prefijo `orp_`).
+Manual de **instalación, configuración y uso** del plugin de WordPress/WooCommerce **Orvita Print** (`orp-print`).
 
-- **Versión documentada:** 1.0.0 (F1 completo)
+- **Versión documentada:** 1.0.0
 - **Licencia:** GPL v2 o posterior
 - **Requisitos:** WordPress ≥ 6.8 · PHP ≥ 8.1 · WooCommerce (para pedidos)
-- **Contrato REST congelado:** `wp-json/orp-print/v1` (ver `Doc/04-modelo-de-datos-y-contrato.md`)
+- **API REST:** `wp-json/orp-print/v1`
 
 ---
 
@@ -24,9 +24,8 @@ Manual completo de **instalación, configuración y uso** del plugin de WordPres
 11. [Emparejamiento del agente de Windows](#11-emparejamiento-del-agente-de-windows)
 12. [Página Estado (diagnóstico)](#12-página-estado-diagnóstico)
 13. [Referencia de la API REST](#13-referencia-de-la-api-rest)
-14. [Herramientas: WP-CLI y simulador](#14-herramientas-wp-cli-y-simulador)
-15. [Mantenimiento, desinstalación y datos](#15-mantenimiento-desinstalación-y-datos)
-16. [Resolución de problemas](#16-resolución-de-problemas)
+14. [Mantenimiento, desinstalación y datos](#14-mantenimiento-desinstalación-y-datos)
+15. [Resolución de problemas](#15-resolución-de-problemas)
 
 ---
 
@@ -36,7 +35,7 @@ Orvita Print convierte cada pedido de WooCommerce en un **documento neutro** (JS
 
 **Sin el agente el plugin también es útil:** puedes configurar locales, diseñar la plantilla, previsualizar el ticket e imprimirlo a mano desde el navegador. No hay comprobación de licencia ni llamadas a servidores de Orvita.
 
-**Arquitectura en una frase:** pedido → documento neutro → cola por local → agente (poll/claim/ack) → impresora térmica.
+**Arquitectura en una frase:** pedido → documento neutro → cola por local → agente → impresora térmica.
 
 **Capacidades de la versión actual (capa «Producto»):**
 
@@ -56,38 +55,11 @@ Orvita Print convierte cada pedido de WooCommerce en un **documento neutro** (JS
 
 1. Sube la carpeta `orp-print` a `/wp-content/plugins/` (o instálala desde **Plugins → Añadir nuevo → Subir plugin** con el ZIP).
 2. Activa el plugin en **Plugins**. Al activar:
-   - Se crean las **6 tablas propias** con el prefijo de tu BD (`wp_orp_locations`, `wp_orp_agents`, `wp_orp_destinations`, `wp_orp_jobs`, `wp_orp_pairing_codes`, `wp_orp_logs`).
+   - Se crean las **6 tablas propias** con el prefijo de tu base de datos (listadas en el Anexo A).
    - Se concede la capacidad **`manage_orp_print`** al rol *administrator* (única capacidad que protege todo el panel).
 3. Verifica el menú **Orvita Print** en el lateral del administrador (icono de impresora).
 
-### 2.2 Entorno de desarrollo (Docker, 5 comandos)
-
-Desde la carpeta `orp-print/`:
-
-```bash
-# 1. Arrancar WordPress con el plugin activado (puerto 8888)
-npx @wordpress/env start
-
-# 2. Sembrar el entorno: 3 locales, 1 salida, 1 agente y 1 trabajo de prueba.
-#    El TOKEN del agente se imprime en consola y solo se muestra una vez: cópialo.
-npx @wordpress/env run cli wp orp seed
-
-# 3. Comprobar la salud de la API (público, sin token)
-curl -s http://localhost:8888/wp-json/orp-print/v1/health
-
-# 4. Ejecutar el ciclo completo con el simulador:
-#    heartbeat → poll → claim → documento en var/jobs/ → ack
-php tools/simulator.php --url=http://localhost:8888 --token=TOKEN --once
-
-# 5. Ver la configuración del documento que consume el agente
-#    (sin token debe responder 401)
-curl -s -H "Authorization: Bearer TOKEN" http://localhost:8888/wp-json/orp-print/v1/config
-```
-
-> Si no tienes PHP local, los comandos 4 y 5 también funcionan dentro del contenedor:
-> `npx @wordpress/env run cli php /var/www/html/wp-content/plugins/orp-print/tools/simulator.php --url=http://localhost:8888 --token=TOKEN --once`
-
-### 2.3 Compatibilidad HPOS
+### 2.2 Compatibilidad HPOS
 
 El plugin declara compatibilidad con **HPOS** (tablas de pedido propias de WooCommerce). Todos los accesos al pedido usan la API CRUD de WooCommerce, así que funciona igual con HPOS activado o desactivado. Puedes comprobarlo en **Orvita Print → Estado**.
 
@@ -108,7 +80,9 @@ Tras instalar, este es el recorrido mínimo recomendado:
 
 ## 4. Configuración: Ajustes
 
-Página: **Orvita Print → Ajustes**. Los ajustes viven en la opción `orp_settings` de la BD; el panel es su único escritor.
+Página: **Orvita Print → Ajustes**. El panel es el único lugar donde se modifican los ajustes de la instalación.
+
+![Página de Ajustes con las tres capas: producto, preset e instancia](capturas/01-ajustes.png)
 
 ### 4.1 Las tres capas
 
@@ -154,16 +128,18 @@ Un preset **es configuración, no un modo del código**: después de aplicarlo p
 
 | Campo | Rango | Por defecto | Efecto |
 |---|---|---|---|
-| Caducidad de trabajos | 1–1440 min | 30 | Un trabajo `pending` caducado ya no se sirve al agente (HTTP 410); el Reaper lo marca `expired`. |
+| Caducidad de trabajos | 1–1440 min | 30 | Un trabajo `pending` caducado ya no se sirve al agente (HTTP 410); la limpieza automática lo marca `expired`. |
 | Retención | 1–3650 días | 90 | Días que se conservan los trabajos entregados antes de la limpieza. |
 
-> **Saneado automático:** los valores fuera de rango vuelven al límite o al defecto (p. ej. poll 0 → 10, ancho 999 → 80). La validación es server-side, con nonce y capacidad `manage_orp_print`.
+> **Saneado automático:** los valores fuera de rango vuelven al límite o al defecto (p. ej. poll 0 → 10, ancho 999 → 80).
 
 ---
 
 ## 5. Locales y reglas
 
 Página: **Orvita Print → Locales y reglas**. Cada local es un destino físico (tienda, barra, cocina…) al que se asignan pedidos.
+
+![Locales y reglas: formulario de alta, tabla de locales y salidas por local](capturas/02-locales.png)
 
 ### 5.1 Crear o editar un local
 
@@ -208,7 +184,7 @@ Ejemplo (local de Alcalá, envío local):
 
 ### 5.3 Salidas (destinos) por local
 
-La tabla inferior **es de solo lectura**: cada salida la reporta el agente del TPV en su heartbeat (impresora, rol, etiqueta, copias y estado). Cada pedido genera **un trabajo por salida activa** del local, con las copias congeladas al crearlo.
+La tabla inferior **es de solo lectura**: cada salida la reporta el agente del TPV en cada latido (impresora, rol, etiqueta, copias y estado). Cada pedido genera **un trabajo por salida activa** del local, con las copias congeladas al crearlo.
 
 Avisos automáticos del panel:
 
@@ -222,6 +198,8 @@ Una salida que el agente dejó de reportar se muestra como **«sin confirmar»**
 ## 6. Plantilla del ticket
 
 Página: **Orvita Print → Plantilla del ticket**. La plantilla vive en la opción `orp_template` y alimenta **las dos salidas**: el documento que imprime el agente y la vista previa imprimible del navegador.
+
+![Plantilla del ticket: campos activables, pie y logo con registro de cambios](capturas/03-plantilla.png)
 
 ### 6.1 Campos activables (en este orden en el ticket)
 
@@ -256,6 +234,8 @@ El preset elegido en Ajustes marca los valores por defecto («Aviso» = 5 campos
 
 Página: **Orvita Print → Vista previa** (submenú; también botón «Ver ticket» en los pedidos).
 
+![Vista previa imprimible del ticket con datos de ejemplo](capturas/04-vista-previa.png)
+
 - **Con datos de ejemplo:** desde la página de plantilla o el submenú. No requiere WooCommerce activo ni pedidos.
 - **Con un pedido real:** botón **«Ver ticket»** en la fila del pedido (lista de pedidos de WooCommerce) o acción «Ver ticket (Orvita Print)» en la ficha del pedido → abre `admin.php?page=orp-preview&order_id=…`.
 
@@ -271,15 +251,17 @@ Características:
 
 Página: **Orvita Print → Cola**. Cada fila es **un documento para una impresora**: un trabajo por pedido y salida.
 
+![Cola de impresión: agentes por local, filtros y tabla de trabajos](capturas/05-cola.png)
+
 ### 8.1 Estados de un trabajo
 
 | Estado | Significado |
 |---|---|
 | `pending` | En espera de ser reclamado por el agente. |
-| `claimed` | Reclamado por un agente (lease de 120 s). |
-| `delivered` | El agente confirmó la impresión (ack). |
+| `claimed` | Reclamado por un agente; tiene un tiempo limitado para imprimirlo. |
+| `delivered` | El agente confirmó la impresión. |
 | `failed` | El agente reportó un error de impresión. |
-| `expired` | Caducó sin entregarse (el Reaper lo marca; ya no se sirve). |
+| `expired` | Caducó sin entregarse (la limpieza automática lo marca; ya no se sirve). |
 | `cancelled` | Anulado desde el panel; no se imprimirá. |
 
 ### 8.2 Cabecera de agentes
@@ -288,7 +270,7 @@ Tabla «Agentes por local»: agente **conectado** (último latido < 3 min) o **d
 
 ### 8.3 Filtros y vista de documento
 
-- Filtros por **estado**, **local**, **fecha de creación** (en tu zona horaria; la BD va en UTC) y **trabajos por página** (5–100, por defecto 20).
+- Filtros por **estado**, **local**, **fecha de creación** (en tu zona horaria; el sistema guarda las horas en UTC) y **trabajos por página** (5–100, por defecto 20).
 - Al hacer clic en un trabajo se abre su **documento neutro completo** (JSON bonito, solo lectura) con estado, pedido, salida, copias congeladas, intentos, último error, fechas de creación/caducidad/entrega.
 
 ### 8.4 Acciones operativas
@@ -296,7 +278,7 @@ Tabla «Agentes por local»: agente **conectado** (último latido < 3 min) o **d
 | Acción | Desde → hasta | Detalle |
 |---|---|---|
 | **Cancelar** | `pending`/`claimed` → `cancelled` | Lo entregado o fallado no se toca («el papel no se desimprime»). |
-| **Reencolar** | `failed`/`expired` → `pending` | Restaura **la misma fila**: intentos a 0, caducidad nueva, mismo `idempotency_key`. No duplica nada y conserva el documento original. |
+| **Reencolar** | `failed`/`expired` → `pending` | Restaura **la misma fila**: intentos a 0, caducidad nueva y el mismo documento original. No duplica nada. |
 
 > Para **reimprimir con el documento regenerado** (plantilla actual) usa «Reimprimir ticket» en la ficha del pedido (sección 10).
 
@@ -314,7 +296,7 @@ Cuando se dispara un pedido (creación o estado elegido en Ajustes), el plugin:
 Detalles a saber:
 
 - Funciona con **checkout clásico y de bloques** y con HPOS.
-- El disparo por creación siempre está activo (el piloto nace en `on-hold` con COD: el disparador correcto es la creación).
+- El disparo por creación del pedido está siempre activo: es el disparador correcto para la mayoría de los comercios (el pedido nace pendiente de pago contra entrega).
 - Si el pedido no coincide con ninguna regla: local por defecto + aviso; sin local por defecto, no se encola (queda en el log y aviso en el panel).
 - Sin salidas activas en el local, no se crean trabajos (la cola no crece sin agente); se sugiere imprimir desde el navegador.
 
@@ -324,10 +306,12 @@ Detalles a saber:
 
 En la ficha de cada pedido de WooCommerce (desplegable «Acciones del pedido»):
 
+![Lista de pedidos con el botón «Ver ticket» en las acciones de fila](capturas/07-pedidos.png)
+
 | Acción | Efecto |
 |---|---|
 | **Ver ticket (Orvita Print)** | Abre la vista previa imprimible del pedido. **No crea trabajo.** |
-| **Reimprimir ticket** | **Crea trabajo nuevo** para cada salida activa del local del pedido, con clave de idempotencia `sha256(order_id \| manual \| role \| timestamp \| user_id)`: las reimpresiones manuales nunca se deduplican entre sí. El resultado se muestra en un aviso del panel. |
+| **Reimprimir ticket** | **Crea trabajo nuevo** para cada salida activa del local del pedido. Cada reimpresión manual genera trabajo propio (no se deduplica entre reimpresiones). El resultado se muestra en un aviso del panel. |
 
 Si el local no tiene salidas activas, no se crea ningún trabajo y se sugiere imprimir desde el navegador («Ver ticket»).
 
@@ -343,7 +327,7 @@ La impresión automática requiere el **agente de Orvita Print para Windows** (s
 2. En la fila del local, pulsa **«Generar código»** (columna «Emparejamiento»).
 3. El panel muestra el código y su hora de caducidad. Mientras esté vigente, también aparece como «código vigente» en la tabla.
 
-Propiedades de seguridad del código: vida de **10 minutos**, **un solo uso**, máximo **5 intentos**, válido solo para su local y un agente. Throttling por IP: 10 fallos/hora → HTTP 429 con `Retry-After`.
+El código caduca a los **10 minutos**, vale **un solo uso** y admite un máximo de **5 intentos**; solo vale para su local y un agente. Tras varios fallos consecutivos desde la misma conexión, el emparejamiento se bloquea temporalmente.
 
 ### 11.2 Emparejar el agente (lado TPV)
 
@@ -353,14 +337,13 @@ En el PC del TPV, con el agente instalado:
 orvitaprint pair --server <URL-del-tienda> <código-de-6-dígitos>
 ```
 
-El agente llama a `POST /pair` (público, sin token), recibe su **token Bearer** —que se muestra **una sola vez**— y queda vinculado a ese local. En la BD solo queda el hash SHA-256 del token más un prefijo de 8 caracteres para identificarlo; el token nunca aparece en los logs.
+El agente se comunica con la tienda (`POST /pair`), recibe su **token de acceso** —que se muestra **una sola vez**— y queda vinculado a ese local. El token no se guarda en claro y no vuelve a aparecer: si se pierde, genera un código nuevo y vuelve a emparejar.
 
 ### 11.3 Tras el emparejamiento
 
-- El agente reporta sus **salidas** (impresoras, roles, etiquetas, copias) en cada **heartbeat**; aparecen en «Locales y reglas» y en la cabecera de la Cola.
-- El ciclo operativo es: **heartbeat** (estado + `pending_count` + `config_version`) → **poll** de trabajos pendientes → **claim** atómico de uno → impresión → **ack** (o **release** si no puede imprimirlo).
-- Un agente puede ser **revocado** desde la BD (`status='revoked'`); dejará de autenticarse (HTTP 401 `orp_token_revoked`).
-- Puedes probar todo el ciclo sin agente real con `tools/simulator.php` (sección 14.2).
+- El agente reporta sus **salidas** (impresoras, roles, etiquetas, copias) en cada latido; aparecen en «Locales y reglas» y en la cabecera de la Cola.
+- El ciclo operativo automático es: el agente consulta el estado y los trabajos pendientes, reclama uno, lo imprime y confirma la entrega (o lo devuelve si no ha podido).
+- Un agente puede ser **revocado** (p. ej. por soporte): dejará de autenticarse hasta volver a emparejar.
 
 ---
 
@@ -368,10 +351,12 @@ El agente llama a `POST /pair` (público, sin token), recibe su **token Bearer**
 
 Página: **Orvita Print → Estado**. Solo lectura, sin formularios y sin datos personales: es lo primero que se pide a un administrador cuando «algo no imprime».
 
+![Página Estado: comprobaciones automáticas, versiones, locales, agentes, cola y eventos](capturas/06-estado.png)
+
 Incluye:
 
-- **Comprobaciones automáticas (✅/⚠️):** WooCommerce activo (y versión), HPOS activado/desactivado, cron del Reaper programado (próxima ejecución), extensión GD de PHP (necesaria para el logo), y otras comprobaciones del entorno.
-- **Versiones:** plugin, API, WordPress, WooCommerce, PHP, HPOS, `config_version` y `template_version`.
+- **Comprobaciones automáticas (✅/⚠️):** WooCommerce activo (y versión), HPOS activado/desactivado, limpieza automática programada (próxima ejecución), extensión GD de PHP (necesaria para el logo), y otras comprobaciones del entorno.
+- **Versiones:** plugin, API, WordPress, WooCommerce, PHP, versión de configuración y versión de plantilla.
 - **Locales** con sus reglas resumidas («ciudad in [Alcalá, alcala] · código postal prefix [28]»).
 - **Agentes** con último latido, versión y salidas.
 - **Resumen de la cola** por estado.
@@ -381,14 +366,14 @@ Incluye:
 
 ## 13. Referencia de la API REST
 
-Namespace: **`orp-print/v1`** (contrato congelado; detalles completos en `Doc/04` §5).
+Namespace: **`orp-print/v1`** — URL base: `https://tu-tienda.com/wp-json/orp-print/v1`. Es la referencia técnica para quien integre o depure el agente.
 
 ### 13.1 Autenticación
 
 - `Authorization: Bearer <token>` con respaldo en la cabecera **`X-Orp-Token`**.
 - Todos los endpoints la exigen **excepto** `GET /health` y `POST /pair`.
-- El token se guarda solo como SHA-256 + prefijo de 8 caracteres.
-- **Rate limit por token: 120 peticiones/minuto.** Al superarlas: HTTP 429 con cabecera `Retry-After`.
+- El token se guarda cifrado (hash) y no vuelve a mostrarse nunca: consérvalo cuando se emite.
+- **Límite de peticiones: 120 por minuto y token.** Al superarlas: HTTP 429 con cabecera `Retry-After`.
 
 ### 13.2 Endpoints
 
@@ -416,76 +401,35 @@ Namespace: **`orp-print/v1`** (contrato congelado; detalles completos en `Doc/04
 
 ### 13.4 Convenciones de datos
 
-- La **base de datos va en UTC**; las fechas del contrato salen en **ISO-8601** con la zona horaria del sitio (`wp_date()`).
-- Los cuerpos de error 409/410 de claim son el JSON literal `{"error": …}` del contrato (parseables por el agente sin adaptaciones).
-- Un cambio de esquema sube `orp_db_version` y añade su migración; nunca se edita una ya publicada.
+- La base de datos guarda las horas en **UTC**; las fechas de la API salen en formato **ISO-8601** con la zona horaria del sitio.
+- Los cuerpos de error 409/410 del claim son el JSON literal `{"error": …}` (parseables por el agente sin adaptaciones).
 
 ---
 
-## 14. Herramientas: WP-CLI y simulador
+## 14. Mantenimiento, desinstalación y datos
 
-### 14.1 `wp orp seed`
+### 14.1 Limpieza automática
 
-Deja un entorno de pruebas listo en un comando: **3 locales** (`local-centro`, `local-norte`, `local-sur`), **1 agente** con salida y **1 trabajo de prueba**.
-
-```bash
-wp orp seed           # siembra (el token se imprime UNA vez en consola)
-wp orp seed --reset   # borra la siembra anterior y la regenera
-```
-
-Notas: si la siembra ya existe, avisa y no hace nada (usa `--reset`). Al regenerar, el token anterior queda revocado al borrar el agente.
-
-### 14.2 Simulador de agente
-
-`tools/simulator.php` ejecuta el ciclo completo de un agente sin dependencias:
-
-```bash
-php tools/simulator.php --url=http://localhost:8888 --token=TOKEN --once
-# con fallo simulado:
-php tools/simulator.php --url=... --token=TOKEN --once --fail=orp_printer_not_found
-```
-
-Útil para verificar: heartbeat → poll → claim → documento en `var/jobs/` → ack; el 409 con dos agentes a la vez; el 410 con trabajos caducados; el 401 con token revocado; y el respaldo de cabecera `X-Orp-Token`.
-
-### 14.3 Pruebas PHPUnit
-
-109 tests / 509 aserciones (esquema, reclamo atómico, idempotencia, cursor, matching de reglas, disparo con dedupe, plantilla, pair, reaper, acciones de cola y saneado de ajustes):
-
-```bash
-composer install
-WP_TESTS_DIR=/ruta/a/wordpress-tests-lib vendor/bin/phpunit
-# o con wp-env:
-npx @wordpress/env run tests-cli bash tools/_t_phpunit.sh
-```
-
----
-
-## 15. Mantenimiento, desinstalación y datos
-
-### 15.1 Reaper (limpieza automática)
-
-Cron propio `orp_reaper_hourly` (más una ejecución perezosa cada 5 min en cargas admin) que:
+Una limpieza automática se ejecuta cada hora (con una pasada extra cada 5 minutos mientras administras el sitio) y:
 
 - Marca `expired` los `pending` con caducidad pasada y avisa en el panel con el recuento (el aviso se limpia al entrar en la Cola, donde puedes reencolar).
 - Limpia los trabajos entregados superada la **retención** configurada.
-- Purga los **logs** con más de **30 días**.
+- Purga los **registros técnicos** con más de **30 días**.
 - Detecta **agentes desconectados** (último latido > 3 min).
 
-El cron se reprograma al reactivar el plugin o con `Reaper::ensure_schedule()`; se elimina al desactivar.
+### 14.2 Desactivación vs. desinstalación
 
-### 15.2 Desactivación vs. desinstalación
+- **Desactivar** el plugin detiene la limpieza programada pero **conserva todos los datos**.
+- **Desinstalar** (borrar) el plugin, por defecto **no borra nada**: trabajos, locales, agentes y registros se conservan por si se reinstala.
+- Borrado total: activa antes la clave `uninstall_purge` de los ajustes, que elimina las 6 tablas `orp_*`, las opciones del plugin y la capacidad `manage_orp_print`.
 
-- **Desactivar** el plugin elimina el cron programado pero **conserva todos los datos**.
-- **Desinstalar** (borrar) el plugin, por defecto **no borra nada**: trabajos, locales, agentes y logs se conservan por si se reinstala.
-- Borrado total: activa antes la clave `uninstall_purge` (en `orp_settings`), que elimina las 6 tablas `orp_*`, las opciones (`orp_db_version`, `orp_settings`, `orp_template`, `orp_template_version`, `orp_config_version`, `orp_expired_unread`), la capacidad `manage_orp_print` y los transients del rate limit.
+### 14.3 Privacidad
 
-### 15.3 Privacidad
-
-El registro técnico (`orp_logs`) **no contiene datos personales** (el token nunca aparece; los heartbeats no se registran). La página Estado no muestra datos personales.
+El registro técnico del plugin **no contiene datos personales** (el token del agente nunca aparece; los latidos no se registran). La página Estado no muestra datos personales.
 
 ---
 
-## 16. Resolución de problemas
+## 15. Resolución de problemas
 
 | Síntoma | Dónde mirar / qué hacer |
 |---|---|
@@ -493,30 +437,31 @@ El registro técnico (`orp_logs`) **no contiene datos personales** (el token nun
 | El pedido no se encoló | ¿Coincidía alguna regla? Sin regla → local por defecto (con aviso) o nada si no hay defecto. Aviso en el panel y registro en el log. Cambiar reglas no afecta a trabajos ya encolados. |
 | Trabajo `expired` | La caducidad (`job_expiry_minutes`) pasó sin entrega. El agente no reclama caducados (410). Usa **Reencolar** en la Cola para darle caducidad nueva. |
 | Trabajo `failed` | Revisa el «Último error» en la vista del documento y el log del agente. Reencola tras corregir. |
-| Duplicados temidos | No deberían ocurrir: claim atómico + ack idempotente + idempotency_key. Comprueba `dedupe_scope` en Ajustes si ves un trabajo por cada cambio de estado y solo quieres uno por pedido. |
+| Duplicados temidos | No deberían ocurrir: el sistema garantiza un solo aviso por pedido. Si ves un trabajo por cada cambio de estado y solo quieres uno, comprueba la **deduplicación** en Ajustes. |
 | El agente no aparece | Genera un código de emparejamiento vigente y repite `orvitaprint pair --server <URL> <código>`. El token solo se muestra una vez. |
-| Salida «sin confirmar» | El último heartbeat del agente ya no incluye esa salida. Revisa la impresora en el TPV; la baja la da el agente reportándola `enabled = 0`. |
-| Error 401 del agente | Token revocado o borrado (`orp_token_revoked`). Vuelve a emparejar el local. |
-| Error 429 | Rate limit (120 req/min por token) o 5 intentos del código de emparejamiento; espera el `Retry-After` (15 min en el código bloqueado). |
+| Salida «sin confirmar» | El último latido del agente ya no incluye esa salida. Revisa la impresora en el TPV; la baja la da el propio agente marcándola desactivada. |
+| Error 401 del agente | Token revocado o borrado. Vuelve a emparejar el local. |
+| Error 429 | Límite de peticiones superado (120 por minuto) o 5 intentos fallidos del código de emparejamiento; espera el tiempo indicado en la respuesta (15 min en el código bloqueado). |
 | Aviso «dos salidas, misma impresora» | Usa el campo **copias** de una sola salida en vez de dos salidas repetidas. |
 | Logo no sale en el ticket | Configura el adjunto en **Plantilla del ticket**; requiere la **extensión GD** de PHP (comprobación en Estado). |
 | Dos locales con reglas solapadas | Gana el de **menor prioridad numérica**. Revisa prioridades y valores de las reglas. |
-| Reset del entorno de pruebas | `wp orp seed --reset` (regenera locales, agente y trabajo; el token anterior queda revocado). |
 
 ---
 
-## Anexo A. Tablas de base de datos creadas
+## Anexo A. Dónde se guarda la información
+
+El plugin crea sus propias tablas (con el prefijo de tu base de datos) y no toca las tablas de WordPress ni de WooCommerce:
 
 | Tabla | Contenido |
 |---|---|
-| `orp_locations` | Locales: código, nombre, activado, prioridad, reglas JSON, marca de defecto. |
-| `orp_agents` | Agentes emparejados: nombre, estado (`active`/`revoked`), token (SHA-256 + prefijo), versión, plataforma, `last_seen_at`, local. |
-| `orp_destinations` | Salidas reportadas por el agente: local, rol, etiqueta, impresora, copias, activada. |
-| `orp_jobs` | Cola: pedido, local, salida (`printer_role`), copias, estado, intentos, payload (documento neutro), `idempotency_key`, fechas. |
-| `orp_pairing_codes` | Códigos de emparejamiento: 6 dígitos, caducidad, intentos. |
-| `orp_logs` | Registro técnico sin datos personales (retención 30 días). |
+| `orp_locations` | Locales: código, nombre, activado, prioridad, reglas, local por defecto. |
+| `orp_agents` | Agentes emparejados y su último latido. |
+| `orp_destinations` | Salidas (impresoras) reportadas por cada agente. |
+| `orp_jobs` | Cola: pedido, local, salida, copias, estado, documento y fechas. |
+| `orp_pairing_codes` | Códigos de emparejamiento generados. |
+| `orp_logs` | Registro técnico sin datos personales (se conserva 30 días). |
 
-Opciones en `wp_options`: `orp_settings` (ajustes), `orp_template` (plantilla), `orp_template_version`, `orp_config_version`, `orp_db_version`, `orp_expired_unread`.
+Los ajustes y la plantilla del ticket se guardan como opciones de WordPress y se eliminan (o conservan) al desinstalar según lo descrito en la sección 14.
 
 ## Anexo B. Referencia rápida de presets
 

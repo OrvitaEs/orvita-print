@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<base href="file:///C:/Users/chaky/OneDrive/Documentos/repos/OrvitaPrint/Doc/">
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", -apple-system, Roboto, Arial, sans-serif;
+    font-size: 10.5pt; line-height: 1.55; color: #1d2327; margin: 0;
+  }
+  h1 { font-size: 21pt; color: #10151a; border-bottom: 3px solid #2271b1; padding-bottom: 8px; margin: 0 0 14px; }
+  h2 { font-size: 15pt; color: #135e96; border-bottom: 1px solid #c3c4c7; padding-bottom: 4px; margin: 26px 0 10px; page-break-after: avoid; }
+  h3 { font-size: 12pt; color: #1d2327; margin: 18px 0 8px; page-break-after: avoid; }
+  p { margin: 6px 0; }
+  ul, ol { margin: 6px 0; padding-left: 22px; }
+  li { margin: 3px 0; }
+  code { font-family: Consolas, "Cascadia Mono", monospace; font-size: 9pt; background: #f0f0f1; padding: 1px 4px; border-radius: 3px; }
+  pre { background: #f6f7f7; border: 1px solid #dcdcde; border-left: 4px solid #2271b1; padding: 10px 12px; border-radius: 4px; overflow-x: hidden; page-break-inside: avoid; }
+  pre code { background: none; padding: 0; font-size: 8.5pt; white-space: pre-wrap; word-wrap: break-word; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 9.5pt; page-break-inside: avoid; }
+  th { background: #135e96; color: #fff; text-align: left; padding: 6px 8px; }
+  td { border: 1px solid #dcdcde; padding: 5px 8px; vertical-align: top; }
+  tr:nth-child(even) td { background: #f6f7f7; }
+  blockquote { border-left: 4px solid #dba617; background: #fcf9e8; margin: 10px 0; padding: 8px 14px; page-break-inside: avoid; }
+  blockquote p { margin: 2px 0; }
+  img { max-width: 100%; height: auto; border: 1px solid #dcdcde; border-radius: 4px; margin: 6px 0 2px; }
+  p:has(> img) { text-align: center; page-break-inside: avoid; }
+  hr { border: none; border-top: 1px solid #dcdcde; margin: 18px 0; }
+  a { color: #135e96; text-decoration: none; }
+  @page { size: A4; }
+</style>
+</head>
+<body>
+<h1>Manual de uso de Orvita Print (plugin <code>orp-print</code>)</h1>
+<p>Manual de <strong>instalación, configuración y uso</strong> del plugin de WordPress/WooCommerce <strong>Orvita Print</strong> (<code>orp-print</code>).</p>
+<ul>
+<li><strong>Versión documentada:</strong> 1.0.0</li>
+<li><strong>Licencia:</strong> GPL v2 o posterior</li>
+<li><strong>Requisitos:</strong> WordPress ≥ 6.8 · PHP ≥ 8.1 · WooCommerce (para pedidos)</li>
+<li><strong>API REST:</strong> <code>wp-json/orp-print/v1</code></li>
+</ul>
+<hr>
+<h2>Índice</h2>
+<ol>
+<li><a href="#1-qu%C3%A9-es-orvita-print">¿Qué es Orvita Print?</a></li>
+<li><a href="#2-instalaci%C3%B3n">Instalación</a></li>
+<li><a href="#3-primeros-pasos-gu%C3%ADa-r%C3%A1pida">Primeros pasos (guía rápida)</a></li>
+<li><a href="#4-configuraci%C3%B3n-ajustes">Configuración: Ajustes</a></li>
+<li><a href="#5-locales-y-reglas">Locales y reglas</a></li>
+<li><a href="#6-plantilla-del-ticket">Plantilla del ticket</a></li>
+<li><a href="#7-vista-previa-e-impresi%C3%B3n-manual">Vista previa e impresión manual</a></li>
+<li><a href="#8-cola-de-impresi%C3%B3n">Cola de impresión</a></li>
+<li><a href="#9-disparo-autom%C3%A1tico-de-pedidos">Disparo automático de pedidos</a></li>
+<li><a href="#10-reimpresi%C3%B3n-desde-el-pedido">Reimpresión desde el pedido</a></li>
+<li><a href="#11-emparejamiento-del-agente-de-windows">Emparejamiento del agente de Windows</a></li>
+<li><a href="#12-p%C3%A1gina-estado-diagn%C3%B3stico">Página Estado (diagnóstico)</a></li>
+<li><a href="#13-referencia-de-la-api-rest">Referencia de la API REST</a></li>
+<li><a href="#14-mantenimiento-desinstalaci%C3%B3n-y-datos">Mantenimiento, desinstalación y datos</a></li>
+<li><a href="#15-resoluci%C3%B3n-de-problemas">Resolución de problemas</a></li>
+</ol>
+<hr>
+<h2>1. ¿Qué es Orvita Print?</h2>
+<p>Orvita Print convierte cada pedido de WooCommerce en un <strong>documento neutro</strong> (JSON, versión 1) que se encola para el <strong>local físico</strong> que corresponda (tienda, barra, cocina…). Un <strong>agente opcional para Windows</strong> instalado en el TPV reclama esos trabajos vía HTTPS y los imprime en la impresora térmica.</p>
+<p><strong>Sin el agente el plugin también es útil:</strong> puedes configurar locales, diseñar la plantilla, previsualizar el ticket e imprimirlo a mano desde el navegador. No hay comprobación de licencia ni llamadas a servidores de Orvita.</p>
+<p><strong>Arquitectura en una frase:</strong> pedido → documento neutro → cola por local → agente → impresora térmica.</p>
+<p><strong>Capacidades de la versión actual (capa «Producto»):</strong></p>
+<ul>
+<li>Un documento por pedido, de 1 a <em>n</em> salidas por local.</li>
+<li>Disparo al crear el pedido y/o al pasar a estados de pedido elegibles.</li>
+<li>Deduplicación por pedido o por disparo.</li>
+<li>Plantilla por campos seleccionables (logo, cliente, líneas, totales, QR, pie…).</li>
+<li>Cola con estados, reclamo atómico (dos agentes nunca imprimen el mismo trabajo), reconocimiento idempotente y caducidad.</li>
+<li>Emparejamiento de agentes con código de 6 dígitos.</li>
+<li>Registro técnico sin datos personales y página de diagnóstico.</li>
+</ul>
+<hr>
+<h2>2. Instalación</h2>
+<h3>2.1 Instalación en producción</h3>
+<ol>
+<li>Sube la carpeta <code>orp-print</code> a <code>/wp-content/plugins/</code> (o instálala desde <strong>Plugins → Añadir nuevo → Subir plugin</strong> con el ZIP).</li>
+<li>Activa el plugin en <strong>Plugins</strong>. Al activar:<ul>
+<li>Se crean las <strong>6 tablas propias</strong> con el prefijo de tu base de datos (listadas en el Anexo A).</li>
+<li>Se concede la capacidad <strong><code>manage_orp_print</code></strong> al rol <em>administrator</em> (única capacidad que protege todo el panel).</li>
+</ul>
+</li>
+<li>Verifica el menú <strong>Orvita Print</strong> en el lateral del administrador (icono de impresora).</li>
+</ol>
+<h3>2.2 Compatibilidad HPOS</h3>
+<p>El plugin declara compatibilidad con <strong>HPOS</strong> (tablas de pedido propias de WooCommerce). Todos los accesos al pedido usan la API CRUD de WooCommerce, así que funciona igual con HPOS activado o desactivado. Puedes comprobarlo en <strong>Orvita Print → Estado</strong>.</p>
+<hr>
+<h2>3. Primeros pasos (guía rápida)</h2>
+<p>Tras instalar, este es el recorrido mínimo recomendado:</p>
+<ol>
+<li><strong>Orvita Print → Ajustes</strong> — elige un preset («Aviso» es el de una instalación nueva) y revisa los valores de instancia.</li>
+<li><strong>Orvita Print → Locales y reglas</strong> — crea al menos un local con sus reglas de asignación y márcalo como por defecto si quieres red de seguridad.</li>
+<li><strong>Orvita Print → Plantilla del ticket</strong> — activa/desactiva campos, escribe el pie y elige el logo.</li>
+<li><strong>Orvita Print → Vista previa</strong> — comprueba el ticket con datos de ejemplo y pruébalo con «Imprimir».</li>
+<li><em>(Opcional)</em> Instala el agente de Windows en el TPV y genera un <strong>código de emparejamiento</strong> en «Locales y reglas».</li>
+<li>Haz un pedido de prueba y sigue su trabajo en <strong>Orvita Print → Cola</strong>.</li>
+</ol>
+<hr>
+<h2>4. Configuración: Ajustes</h2>
+<p>Página: <strong>Orvita Print → Ajustes</strong>. El panel es el único lugar donde se modifican los ajustes de la instalación.</p>
+<p><img src="capturas/01-ajustes.png" alt="Página de Ajustes con las tres capas: producto, preset e instancia"></p>
+<h3>4.1 Las tres capas</h3>
+<table>
+<thead>
+<tr>
+<th>Capa</th>
+<th>Qué es</th>
+<th>¿Editable?</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>1 · Producto</strong></td>
+<td>Qué puede hacer esta versión del plugin (lista fija de capacidades)</td>
+<td>No</td>
+</tr>
+<tr>
+<td><strong>2 · Preset</strong></td>
+<td>Combinación típica de ajustes; al aplicarla se escriben sus valores en la instancia</td>
+<td>Sí (desplegable + «Aplicar preset»)</td>
+</tr>
+<tr>
+<td><strong>3 · Instancia</strong></td>
+<td>Los valores concretos de tu instalación</td>
+<td>Sí (formulario + «Guardar ajustes»)</td>
+</tr>
+</tbody></table>
+<p>Un preset <strong>es configuración, no un modo del código</strong>: después de aplicarlo puedes afinar la instancia a mano.</p>
+<h3>4.2 Presets disponibles</h3>
+<table>
+<thead>
+<tr>
+<th>Preset</th>
+<th>Qué hace</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Aviso</strong> <em>(por defecto)</em></td>
+<td>Lo más simple: un aviso por pedido en una salida, al crear el pedido. Plantilla mínima (título, fecha/hora, nº pedido, líneas, totales).</td>
+</tr>
+<tr>
+<td><strong>Completo</strong></td>
+<td>Ticket con todos los campos (logo, cliente, teléfono, dirección, QR, pie, nota «no factura») en una sola salida, al crear el pedido.</td>
+</tr>
+<tr>
+<td><strong>Cocina + cliente</strong></td>
+<td>Dos disparadores (creación + estado «En proceso»), un trabajo por cada disparo (<code>dedupe_scope: trigger</code>), corte completo y aviso sonoro. Las 2 salidas reales las aplica el agente reportándolas (en V1 se imprime la plantilla vigente única en todas las salidas).</td>
+</tr>
+<tr>
+<td><strong>Personalizado</strong></td>
+<td>Sin cambios automáticos: mandan los valores de instancia.</td>
+</tr>
+</tbody></table>
+<h3>4.3 Capa de instancia — todos los campos</h3>
+<p><strong>Disparo y deduplicación</strong></p>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valores</th>
+<th>Descripción</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Disparadores</td>
+<td><code>created</code> (fijo) + estados de WooCommerce</td>
+<td>El disparo por <strong>creación del pedido</strong> está siempre activo. Puedes añadir «Pasar al estado…» para cualquiera de los estados de pedido de WooCommerce (p. ej. <code>processing</code>, <code>on-hold</code>).</td>
+</tr>
+<tr>
+<td>Deduplicación</td>
+<td><code>order</code> / <code>trigger</code></td>
+<td><strong>Un solo aviso por pedido</strong> (aunque cambie de estado dos veces) o <strong>un trabajo por cada disparo</strong> (reimprime al pasar de estado).</td>
+</tr>
+<tr>
+<td>Local por defecto</td>
+<td>un local o «Ninguno»</td>
+<td>Red de seguridad: si ninguna regla coincide, el pedido va aquí y se muestra un aviso en el panel. Con «Ninguno», los pedidos sin regla no se encolan (solo se registran en el log). Se sincroniza con la marca «Por defecto» de la página Locales.</td>
+</tr>
+</tbody></table>
+<p><strong>Documento y agente</strong> (su cambio sube <code>orp_config_version</code>; el agente re-sincroniza solo)</p>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valores</th>
+<th>Por defecto</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Ancho de papel</td>
+<td><code>80 mm</code> / <code>58 mm</code></td>
+<td>80</td>
+</tr>
+<tr>
+<td>Codificación</td>
+<td><code>CP850</code> / <code>CP858</code> / <code>CP437</code></td>
+<td>CP850</td>
+</tr>
+<tr>
+<td>Modo de corte</td>
+<td>Corte parcial / completo</td>
+<td>Parcial</td>
+</tr>
+<tr>
+<td>Abrir cajón</td>
+<td>Sí/No</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Intervalo de poll</td>
+<td>1–600 segundos</td>
+<td>10 s (el agente aplica ±20 % de jitter)</td>
+</tr>
+<tr>
+<td>Aviso sonoro</td>
+<td>Sí/No — suena al haber trabajo pendiente</td>
+<td>No</td>
+</tr>
+</tbody></table>
+<p><strong>Cola y retención</strong></p>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Rango</th>
+<th>Por defecto</th>
+<th>Efecto</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Caducidad de trabajos</td>
+<td>1–1440 min</td>
+<td>30</td>
+<td>Un trabajo <code>pending</code> caducado ya no se sirve al agente (HTTP 410); la limpieza automática lo marca <code>expired</code>.</td>
+</tr>
+<tr>
+<td>Retención</td>
+<td>1–3650 días</td>
+<td>90</td>
+<td>Días que se conservan los trabajos entregados antes de la limpieza.</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>Saneado automático:</strong> los valores fuera de rango vuelven al límite o al defecto (p. ej. poll 0 → 10, ancho 999 → 80).</p>
+</blockquote>
+<hr>
+<h2>5. Locales y reglas</h2>
+<p>Página: <strong>Orvita Print → Locales y reglas</strong>. Cada local es un destino físico (tienda, barra, cocina…) al que se asignan pedidos.</p>
+<p><img src="capturas/02-locales.png" alt="Locales y reglas: formulario de alta, tabla de locales y salidas por local"></p>
+<h3>5.1 Crear o editar un local</h3>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Reglas</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Código (canónico)</strong></td>
+<td>Minúsculas, números, guiones y guiones bajos. Máx. 32 caracteres. <strong>Único</strong>. Es el código que puede usar una regla <code>order_meta</code> del checkout.</td>
+</tr>
+<tr>
+<td><strong>Nombre</strong></td>
+<td>Nombre visible (máx. 120 caracteres).</td>
+</tr>
+<tr>
+<td><strong>Prioridad</strong></td>
+<td>0–65535. <strong>Menor número = se evalúa antes</strong>.</td>
+</tr>
+<tr>
+<td><strong>Estado</strong></td>
+<td>Local activo/inactivo. Un local inactivo no recibe pedidos.</td>
+</tr>
+<tr>
+<td><strong>Local por defecto</strong></td>
+<td>Solo puede haber uno. Destino de los pedidos que no coinciden con ninguna regla (con aviso en el panel).</td>
+</tr>
+<tr>
+<td><strong>Reglas (JSON)</strong></td>
+<td>Array JSON (ver 5.2). Se valida al guardar: JSON inválido, regla con tipo/operador/valores no admitidos o más de 20 reglas → error y no se guarda.</td>
+</tr>
+</tbody></table>
+<p><strong>Acciones por fila:</strong> Editar · Activar/Desactivar · Por defecto · Generar código de emparejamiento · Borrar (borra el local <strong>junto con sus salidas y agentes</strong>; pide confirmación).</p>
+<blockquote>
+<p><strong>Importante:</strong> las reglas se leen <strong>al crear el trabajo</strong>. Cambiarlas después no altera los trabajos ya encolados.</p>
+</blockquote>
+<h3>5.2 Reglas de asignación (JSON)</h3>
+<p>Todas las reglas del local deben cumplirse (AND). Tipos y operadores admitidos:</p>
+<table>
+<thead>
+<tr>
+<th>Tipo</th>
+<th>Filtra por</th>
+<th>Operadores válidos</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>city</code></td>
+<td>Ciudad de envío</td>
+<td><code>in</code>, <code>equals</code>, <code>contains</code>, <code>prefix</code>, <code>exists</code></td>
+</tr>
+<tr>
+<td><code>postcode</code></td>
+<td>Código postal</td>
+<td><code>in</code>, <code>equals</code>, <code>contains</code>, <code>prefix</code>, <code>exists</code></td>
+</tr>
+<tr>
+<td><code>shipping_method</code></td>
+<td>Método de envío</td>
+<td><code>in</code>, <code>equals</code>, <code>contains</code>, <code>prefix</code>, <code>exists</code></td>
+</tr>
+<tr>
+<td><code>product_category</code></td>
+<td>Categoría de producto</td>
+<td><code>in</code>, <code>equals</code>, <code>contains</code>, <code>prefix</code>, <code>exists</code></td>
+</tr>
+<tr>
+<td><code>order_meta</code></td>
+<td>Metadato del pedido</td>
+<td><code>in</code>, <code>equals</code>, <code>contains</code>, <code>prefix</code>, <code>exists</code></td>
+</tr>
+</tbody></table>
+<ul>
+<li>En <code>order_meta</code>, <code>values[0]</code> es la <strong>clave del metadato</strong>.</li>
+<li>El matching es tolerante con mayúsculas/acentos en la comparación (p. ej. «Alcalá» y «alcala» se listan como valores).</li>
+</ul>
+<p>Ejemplo (local de Alcalá, envío local):</p>
+<pre><code class="language-json">[
+  { &quot;type&quot;: &quot;city&quot;, &quot;operator&quot;: &quot;in&quot;, &quot;values&quot;: [&quot;Alcalá&quot;, &quot;alcala&quot;] },
+  { &quot;type&quot;: &quot;postcode&quot;, &quot;operator&quot;: &quot;prefix&quot;, &quot;values&quot;: [&quot;28&quot;] }
+]
+</code></pre>
+<p><strong>Resolución del local de un pedido:</strong> se evalúan los locales <strong>activos por prioridad ascendente</strong> y gana el primero cuyas reglas se cumplen. Si ninguno coincide → local por defecto (con aviso). Si no hay local por defecto → el pedido no se encola y el aviso lo indica.</p>
+<h3>5.3 Salidas (destinos) por local</h3>
+<p>La tabla inferior <strong>es de solo lectura</strong>: cada salida la reporta el agente del TPV en cada latido (impresora, rol, etiqueta, copias y estado). Cada pedido genera <strong>un trabajo por salida activa</strong> del local, con las copias congeladas al crearlo.</p>
+<p>Avisos automáticos del panel:</p>
+<ul>
+<li>⚠️ Dos salidas activas del mismo local apuntan a la <strong>misma impresora</strong> → usa el número de copias de la salida, no salidas repetidas.</li>
+<li>ℹ️ Un local <strong>sin salidas activas</strong> no generará trabajos hasta que el agente reporte una.</li>
+</ul>
+<p>Una salida que el agente dejó de reportar se muestra como <strong>«sin confirmar»</strong> y se conserva (no se borra): la baja real la da el agente reportándola con <code>enabled = 0</code>.</p>
+<hr>
+<h2>6. Plantilla del ticket</h2>
+<p>Página: <strong>Orvita Print → Plantilla del ticket</strong>. La plantilla vive en la opción <code>orp_template</code> y alimenta <strong>las dos salidas</strong>: el documento que imprime el agente y la vista previa imprimible del navegador.</p>
+<p><img src="capturas/03-plantilla.png" alt="Plantilla del ticket: campos activables, pie y logo con registro de cambios"></p>
+<h3>6.1 Campos activables (en este orden en el ticket)</h3>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Contenido</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Logo</td>
+<td>PNG generado desde un adjunto de la biblioteca de medios (máx. 384 px de ancho, fondo blanco). Sin logo configurado, el bloque no se emite.</td>
+</tr>
+<tr>
+<td>Título del negocio</td>
+<td>Nombre comercial.</td>
+</tr>
+<tr>
+<td>Fecha y hora</td>
+<td>Del pedido.</td>
+</tr>
+<tr>
+<td>Nº de pedido</td>
+<td>Número de pedido de WooCommerce.</td>
+</tr>
+<tr>
+<td>Cliente</td>
+<td>Nombre del cliente.</td>
+</tr>
+<tr>
+<td>Teléfono</td>
+<td>Teléfono de facturación/envío.</td>
+</tr>
+<tr>
+<td>Dirección de entrega</td>
+<td>Dirección de envío.</td>
+</tr>
+<tr>
+<td>Líneas de producto</td>
+<td>Artículos, cantidades y precios.</td>
+</tr>
+<tr>
+<td>Totales</td>
+<td>Subtotales, envío, impuestos y total.</td>
+</tr>
+<tr>
+<td>Código QR</td>
+<td>QR del pedido.</td>
+</tr>
+<tr>
+<td>Pie personalizado</td>
+<td>Texto libre (por defecto «Gracias por su pedido»).</td>
+</tr>
+<tr>
+<td>Nota «No válido como factura»</td>
+<td>Aviso legal impreso al pie.</td>
+</tr>
+</tbody></table>
+<p>El preset elegido en Ajustes marca los valores por defecto («Aviso» = 5 campos mínimos; «Completo» = todos).</p>
+<h3>6.2 Guardar y versionado</h3>
+<ul>
+<li>Al guardar con cambios se incrementa <strong><code>orp_template_version</code></strong>, que entra en la <strong>clave de idempotencia</strong>: los pedidos ya impresos <strong>no se duplican</strong> al cambiar la plantilla.</li>
+<li>El cambio queda registrado en la tabla de logs y visible en la propia página (<strong>Registro de cambios</strong>: versión vigente, último cambio y los 5 últimos eventos).</li>
+<li>Los trabajos ya encolados conservan el documento con el que se crearon.</li>
+</ul>
+<blockquote>
+<p>La misma plantilla alimenta la vista previa: usa <strong>«Ver vista previa con datos de ejemplo»</strong> para validar el texto antes de imprimir en producción.</p>
+</blockquote>
+<hr>
+<h2>7. Vista previa e impresión manual</h2>
+<p>Página: <strong>Orvita Print → Vista previa</strong> (submenú; también botón «Ver ticket» en los pedidos).</p>
+<p><img src="capturas/04-vista-previa.png" alt="Vista previa imprimible del ticket con datos de ejemplo"></p>
+<ul>
+<li><strong>Con datos de ejemplo:</strong> desde la página de plantilla o el submenú. No requiere WooCommerce activo ni pedidos.</li>
+<li><strong>Con un pedido real:</strong> botón <strong>«Ver ticket»</strong> en la fila del pedido (lista de pedidos de WooCommerce) o acción «Ver ticket (Orvita Print)» en la ficha del pedido → abre <code>admin.php?page=orp-preview&amp;order_id=…</code>.</li>
+</ul>
+<p>Características:</p>
+<ul>
+<li>HTML generado por el <strong>mismo DocumentBuilder</strong> que alimenta la cola: lo que ves es lo que se imprime.</li>
+<li>Se sirve <strong>limpia</strong> (sin chrome de wp-admin y sin recursos externos) para que <strong>Imprimir → window.print()</strong> salga a 80/58 mm sin romper el diseño.</li>
+<li><strong>NO crea trabajo en la cola</strong>: la impresión desde el navegador es acción manual.</li>
+</ul>
+<hr>
+<h2>8. Cola de impresión</h2>
+<p>Página: <strong>Orvita Print → Cola</strong>. Cada fila es <strong>un documento para una impresora</strong>: un trabajo por pedido y salida.</p>
+<p><img src="capturas/05-cola.png" alt="Cola de impresión: agentes por local, filtros y tabla de trabajos"></p>
+<h3>8.1 Estados de un trabajo</h3>
+<table>
+<thead>
+<tr>
+<th>Estado</th>
+<th>Significado</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>pending</code></td>
+<td>En espera de ser reclamado por el agente.</td>
+</tr>
+<tr>
+<td><code>claimed</code></td>
+<td>Reclamado por un agente; tiene un tiempo limitado para imprimirlo.</td>
+</tr>
+<tr>
+<td><code>delivered</code></td>
+<td>El agente confirmó la impresión.</td>
+</tr>
+<tr>
+<td><code>failed</code></td>
+<td>El agente reportó un error de impresión.</td>
+</tr>
+<tr>
+<td><code>expired</code></td>
+<td>Caducó sin entregarse (la limpieza automática lo marca; ya no se sirve).</td>
+</tr>
+<tr>
+<td><code>cancelled</code></td>
+<td>Anulado desde el panel; no se imprimirá.</td>
+</tr>
+</tbody></table>
+<h3>8.2 Cabecera de agentes</h3>
+<p>Tabla «Agentes por local»: agente <strong>conectado</strong> (último latido &lt; 3 min) o <strong>desconectado</strong>, estado revocado, versión y salidas reportadas. Las salidas que el último latido ya no incluye se marcan <strong>«sin confirmar»</strong>.</p>
+<h3>8.3 Filtros y vista de documento</h3>
+<ul>
+<li>Filtros por <strong>estado</strong>, <strong>local</strong>, <strong>fecha de creación</strong> (en tu zona horaria; el sistema guarda las horas en UTC) y <strong>trabajos por página</strong> (5–100, por defecto 20).</li>
+<li>Al hacer clic en un trabajo se abre su <strong>documento neutro completo</strong> (JSON bonito, solo lectura) con estado, pedido, salida, copias congeladas, intentos, último error, fechas de creación/caducidad/entrega.</li>
+</ul>
+<h3>8.4 Acciones operativas</h3>
+<table>
+<thead>
+<tr>
+<th>Acción</th>
+<th>Desde → hasta</th>
+<th>Detalle</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Cancelar</strong></td>
+<td><code>pending</code>/<code>claimed</code> → <code>cancelled</code></td>
+<td>Lo entregado o fallado no se toca («el papel no se desimprime»).</td>
+</tr>
+<tr>
+<td><strong>Reencolar</strong></td>
+<td><code>failed</code>/<code>expired</code> → <code>pending</code></td>
+<td>Restaura <strong>la misma fila</strong>: intentos a 0, caducidad nueva y el mismo documento original. No duplica nada.</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>Para <strong>reimprimir con el documento regenerado</strong> (plantilla actual) usa «Reimprimir ticket» en la ficha del pedido (sección 10).</p>
+</blockquote>
+<hr>
+<h2>9. Disparo automático de pedidos</h2>
+<p>Cuando se dispara un pedido (creación o estado elegido en Ajustes), el plugin:</p>
+<ol>
+<li><strong>Resuelve el local</strong> con las reglas (sección 5.2).</li>
+<li>Aplica la <strong>deduplicación</strong>: <code>order</code> = un solo trabajo por pedido; <code>trigger</code> = uno por cada disparo.</li>
+<li>Crea <strong>un trabajo por cada salida activa</strong> del local (fan-out), con copias congeladas.</li>
+<li>Registra el resultado en <code>orp_logs</code> (sin datos personales).</li>
+</ol>
+<p>Detalles a saber:</p>
+<ul>
+<li>Funciona con <strong>checkout clásico y de bloques</strong> y con HPOS.</li>
+<li>El disparo por creación del pedido está siempre activo: es el disparador correcto para la mayoría de los comercios (el pedido nace pendiente de pago contra entrega).</li>
+<li>Si el pedido no coincide con ninguna regla: local por defecto + aviso; sin local por defecto, no se encola (queda en el log y aviso en el panel).</li>
+<li>Sin salidas activas en el local, no se crean trabajos (la cola no crece sin agente); se sugiere imprimir desde el navegador.</li>
+</ul>
+<hr>
+<h2>10. Reimpresión desde el pedido</h2>
+<p>En la ficha de cada pedido de WooCommerce (desplegable «Acciones del pedido»):</p>
+<p><img src="capturas/07-pedidos.png" alt="Lista de pedidos con el botón «Ver ticket» en las acciones de fila"></p>
+<table>
+<thead>
+<tr>
+<th>Acción</th>
+<th>Efecto</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Ver ticket (Orvita Print)</strong></td>
+<td>Abre la vista previa imprimible del pedido. <strong>No crea trabajo.</strong></td>
+</tr>
+<tr>
+<td><strong>Reimprimir ticket</strong></td>
+<td><strong>Crea trabajo nuevo</strong> para cada salida activa del local del pedido. Cada reimpresión manual genera trabajo propio (no se deduplica entre reimpresiones). El resultado se muestra en un aviso del panel.</td>
+</tr>
+</tbody></table>
+<p>Si el local no tiene salidas activas, no se crea ningún trabajo y se sugiere imprimir desde el navegador («Ver ticket»).</p>
+<hr>
+<h2>11. Emparejamiento del agente de Windows</h2>
+<p>La impresión automática requiere el <strong>agente de Orvita Print para Windows</strong> (software propietario, pago único, se instala en el TPV). El flujo de emparejamiento no usa tokens a mano: usa un <strong>código de 6 dígitos</strong>.</p>
+<h3>11.1 Generar el código (lado WordPress)</h3>
+<ol>
+<li>Ve a <strong>Orvita Print → Locales y reglas</strong>.</li>
+<li>En la fila del local, pulsa <strong>«Generar código»</strong> (columna «Emparejamiento»).</li>
+<li>El panel muestra el código y su hora de caducidad. Mientras esté vigente, también aparece como «código vigente» en la tabla.</li>
+</ol>
+<p>El código caduca a los <strong>10 minutos</strong>, vale <strong>un solo uso</strong> y admite un máximo de <strong>5 intentos</strong>; solo vale para su local y un agente. Tras varios fallos consecutivos desde la misma conexión, el emparejamiento se bloquea temporalmente.</p>
+<h3>11.2 Emparejar el agente (lado TPV)</h3>
+<p>En el PC del TPV, con el agente instalado:</p>
+<pre><code>orvitaprint pair --server &lt;URL-del-tienda&gt; &lt;código-de-6-dígitos&gt;
+</code></pre>
+<p>El agente se comunica con la tienda (<code>POST /pair</code>), recibe su <strong>token de acceso</strong> —que se muestra <strong>una sola vez</strong>— y queda vinculado a ese local. El token no se guarda en claro y no vuelve a aparecer: si se pierde, genera un código nuevo y vuelve a emparejar.</p>
+<h3>11.3 Tras el emparejamiento</h3>
+<ul>
+<li>El agente reporta sus <strong>salidas</strong> (impresoras, roles, etiquetas, copias) en cada latido; aparecen en «Locales y reglas» y en la cabecera de la Cola.</li>
+<li>El ciclo operativo automático es: el agente consulta el estado y los trabajos pendientes, reclama uno, lo imprime y confirma la entrega (o lo devuelve si no ha podido).</li>
+<li>Un agente puede ser <strong>revocado</strong> (p. ej. por soporte): dejará de autenticarse hasta volver a emparejar.</li>
+</ul>
+<hr>
+<h2>12. Página Estado (diagnóstico)</h2>
+<p>Página: <strong>Orvita Print → Estado</strong>. Solo lectura, sin formularios y sin datos personales: es lo primero que se pide a un administrador cuando «algo no imprime».</p>
+<p><img src="capturas/06-estado.png" alt="Página Estado: comprobaciones automáticas, versiones, locales, agentes, cola y eventos"></p>
+<p>Incluye:</p>
+<ul>
+<li><strong>Comprobaciones automáticas (✅/⚠️):</strong> WooCommerce activo (y versión), HPOS activado/desactivado, limpieza automática programada (próxima ejecución), extensión GD de PHP (necesaria para el logo), y otras comprobaciones del entorno.</li>
+<li><strong>Versiones:</strong> plugin, API, WordPress, WooCommerce, PHP, versión de configuración y versión de plantilla.</li>
+<li><strong>Locales</strong> con sus reglas resumidas («ciudad in [Alcalá, alcala] · código postal prefix [28]»).</li>
+<li><strong>Agentes</strong> con último latido, versión y salidas.</li>
+<li><strong>Resumen de la cola</strong> por estado.</li>
+<li><strong>Últimos 20 eventos</strong> de <code>orp_logs</code> con nivel y contexto (retención: 30 días).</li>
+</ul>
+<hr>
+<h2>13. Referencia de la API REST</h2>
+<p>Namespace: <strong><code>orp-print/v1</code></strong> — URL base: <code>https://tu-tienda.com/wp-json/orp-print/v1</code>. Es la referencia técnica para quien integre o depure el agente.</p>
+<h3>13.1 Autenticación</h3>
+<ul>
+<li><code>Authorization: Bearer &lt;token&gt;</code> con respaldo en la cabecera <strong><code>X-Orp-Token</code></strong>.</li>
+<li>Todos los endpoints la exigen <strong>excepto</strong> <code>GET /health</code> y <code>POST /pair</code>.</li>
+<li>El token se guarda cifrado (hash) y no vuelve a mostrarse nunca: consérvalo cuando se emite.</li>
+<li><strong>Límite de peticiones: 120 por minuto y token.</strong> Al superarlas: HTTP 429 con cabecera <code>Retry-After</code>.</li>
+</ul>
+<h3>13.2 Endpoints</h3>
+<table>
+<thead>
+<tr>
+<th>Método y ruta</th>
+<th>Auth</th>
+<th>Descripción</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>GET /health</code></td>
+<td>No</td>
+<td>Salud y versiones: <code>ok</code>, <code>plugin_version</code>, <code>api_version</code>, <code>woocommerce</code>, <code>hpos</code>, <code>server_time</code>.</td>
+</tr>
+<tr>
+<td><code>POST /pair</code></td>
+<td>No</td>
+<td>Emparejamiento con código de 6 dígitos. Devuelve el token <strong>una sola vez</strong>. Errores: 400 <code>orp_pairing_invalid</code>, 410 <code>orp_pairing_expired</code>, 429 <code>orp_pairing_locked</code>.</td>
+</tr>
+<tr>
+<td><code>GET /jobs?after=&lt;id&gt;&amp;limit=&lt;n&gt;</code></td>
+<td>Sí</td>
+<td><strong>Poll</strong> con cursor: trabajos <code>pending</code> del local del token. <code>limit</code> máx. 20 (por defecto 10). Devuelve <code>jobs</code> (con el documento neutro) y <code>cursor</code>.</td>
+</tr>
+<tr>
+<td><code>POST /jobs/{id}/claim</code></td>
+<td>Sí</td>
+<td><strong>Reclamo atómico</strong>: 200 con el trabajo · 409 <code>orp_already_claimed</code> (otro agente lo cogió) · 410 <code>orp_job_expired</code> · 404 <code>orp_not_found</code> (no es del local). Lease de 120 s.</td>
+</tr>
+<tr>
+<td><code>POST /jobs/{id}/ack</code></td>
+<td>Sí</td>
+<td><strong>Reconocimiento idempotente</strong> de impresión: repite el POST y la respuesta mantiene <code>job_status</code>.</td>
+</tr>
+<tr>
+<td><code>POST /jobs/{id}/release</code></td>
+<td>Sí</td>
+<td>El agente devuelve el trabajo que no puede imprimir.</td>
+</tr>
+<tr>
+<td><code>POST /heartbeat</code></td>
+<td>Sí</td>
+<td>El agente reporta <code>agent_version</code>, <code>platform</code>, <code>destinations</code> (upsert de salidas) y <code>last_error</code>. Responde <code>ok</code>, <code>server_time</code>, <code>pending_count</code>, <code>config_version</code>.</td>
+</tr>
+<tr>
+<td><code>GET /config</code></td>
+<td>Sí</td>
+<td>Configuración del documento: <code>config_version</code>, <code>paper_width_mm</code>, <code>encoding</code>, <code>cut_mode</code>, <code>open_drawer</code>, <code>poll_interval</code>. Las impresoras/copias no viajan aquí: las define el agente.</td>
+</tr>
+</tbody></table>
+<h3>13.3 Códigos de error HTTP</h3>
+<table>
+<thead>
+<tr>
+<th>HTTP</th>
+<th>Código</th>
+<th>Cuándo</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>401</td>
+<td><code>orp_invalid_token</code> / <code>orp_token_revoked</code></td>
+<td>Token ausente, inválido o revocado.</td>
+</tr>
+<tr>
+<td>400</td>
+<td><code>orp_invalid_payload</code> / <code>orp_pairing_invalid</code></td>
+<td>Cuerpo inválido o código de emparejamiento malformado/desconocido/usado.</td>
+</tr>
+<tr>
+<td>404</td>
+<td><code>orp_not_found</code></td>
+<td>Trabajo inexistente o de otro local.</td>
+</tr>
+<tr>
+<td>409</td>
+<td><code>orp_already_claimed</code></td>
+<td>Otro agente ganó el reclamo.</td>
+</tr>
+<tr>
+<td>410</td>
+<td><code>orp_job_expired</code> / <code>orp_pairing_expired</code></td>
+<td>Trabajo o código caducado.</td>
+</tr>
+<tr>
+<td>429</td>
+<td><code>orp_rate_limited</code> / <code>orp_pairing_locked</code></td>
+<td>Límite de 120/min (con <code>Retry-After</code>) o 5 intentos del código.</td>
+</tr>
+</tbody></table>
+<h3>13.4 Convenciones de datos</h3>
+<ul>
+<li>La base de datos guarda las horas en <strong>UTC</strong>; las fechas de la API salen en formato <strong>ISO-8601</strong> con la zona horaria del sitio.</li>
+<li>Los cuerpos de error 409/410 del claim son el JSON literal <code>{&quot;error&quot;: …}</code> (parseables por el agente sin adaptaciones).</li>
+</ul>
+<hr>
+<h2>14. Mantenimiento, desinstalación y datos</h2>
+<h3>14.1 Limpieza automática</h3>
+<p>Una limpieza automática se ejecuta cada hora (con una pasada extra cada 5 minutos mientras administras el sitio) y:</p>
+<ul>
+<li>Marca <code>expired</code> los <code>pending</code> con caducidad pasada y avisa en el panel con el recuento (el aviso se limpia al entrar en la Cola, donde puedes reencolar).</li>
+<li>Limpia los trabajos entregados superada la <strong>retención</strong> configurada.</li>
+<li>Purga los <strong>registros técnicos</strong> con más de <strong>30 días</strong>.</li>
+<li>Detecta <strong>agentes desconectados</strong> (último latido &gt; 3 min).</li>
+</ul>
+<h3>14.2 Desactivación vs. desinstalación</h3>
+<ul>
+<li><strong>Desactivar</strong> el plugin detiene la limpieza programada pero <strong>conserva todos los datos</strong>.</li>
+<li><strong>Desinstalar</strong> (borrar) el plugin, por defecto <strong>no borra nada</strong>: trabajos, locales, agentes y registros se conservan por si se reinstala.</li>
+<li>Borrado total: activa antes la clave <code>uninstall_purge</code> de los ajustes, que elimina las 6 tablas <code>orp_*</code>, las opciones del plugin y la capacidad <code>manage_orp_print</code>.</li>
+</ul>
+<h3>14.3 Privacidad</h3>
+<p>El registro técnico del plugin <strong>no contiene datos personales</strong> (el token del agente nunca aparece; los latidos no se registran). La página Estado no muestra datos personales.</p>
+<hr>
+<h2>15. Resolución de problemas</h2>
+<table>
+<thead>
+<tr>
+<th>Síntoma</th>
+<th>Dónde mirar / qué hacer</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>No imprime nada</strong></td>
+<td>Abre <strong>Orvita Print → Estado</strong> y revisa las comprobaciones ✅/⚠️. Después, la <strong>Cola</strong>: ¿hay trabajos <code>pending</code>? ¿El agente aparece «conectado» con salidas activas?</td>
+</tr>
+<tr>
+<td>El pedido no se encoló</td>
+<td>¿Coincidía alguna regla? Sin regla → local por defecto (con aviso) o nada si no hay defecto. Aviso en el panel y registro en el log. Cambiar reglas no afecta a trabajos ya encolados.</td>
+</tr>
+<tr>
+<td>Trabajo <code>expired</code></td>
+<td>La caducidad (<code>job_expiry_minutes</code>) pasó sin entrega. El agente no reclama caducados (410). Usa <strong>Reencolar</strong> en la Cola para darle caducidad nueva.</td>
+</tr>
+<tr>
+<td>Trabajo <code>failed</code></td>
+<td>Revisa el «Último error» en la vista del documento y el log del agente. Reencola tras corregir.</td>
+</tr>
+<tr>
+<td>Duplicados temidos</td>
+<td>No deberían ocurrir: el sistema garantiza un solo aviso por pedido. Si ves un trabajo por cada cambio de estado y solo quieres uno, comprueba la <strong>deduplicación</strong> en Ajustes.</td>
+</tr>
+<tr>
+<td>El agente no aparece</td>
+<td>Genera un código de emparejamiento vigente y repite <code>orvitaprint pair --server &lt;URL&gt; &lt;código&gt;</code>. El token solo se muestra una vez.</td>
+</tr>
+<tr>
+<td>Salida «sin confirmar»</td>
+<td>El último latido del agente ya no incluye esa salida. Revisa la impresora en el TPV; la baja la da el propio agente marcándola desactivada.</td>
+</tr>
+<tr>
+<td>Error 401 del agente</td>
+<td>Token revocado o borrado. Vuelve a emparejar el local.</td>
+</tr>
+<tr>
+<td>Error 429</td>
+<td>Límite de peticiones superado (120 por minuto) o 5 intentos fallidos del código de emparejamiento; espera el tiempo indicado en la respuesta (15 min en el código bloqueado).</td>
+</tr>
+<tr>
+<td>Aviso «dos salidas, misma impresora»</td>
+<td>Usa el campo <strong>copias</strong> de una sola salida en vez de dos salidas repetidas.</td>
+</tr>
+<tr>
+<td>Logo no sale en el ticket</td>
+<td>Configura el adjunto en <strong>Plantilla del ticket</strong>; requiere la <strong>extensión GD</strong> de PHP (comprobación en Estado).</td>
+</tr>
+<tr>
+<td>Dos locales con reglas solapadas</td>
+<td>Gana el de <strong>menor prioridad numérica</strong>. Revisa prioridades y valores de las reglas.</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Anexo A. Dónde se guarda la información</h2>
+<p>El plugin crea sus propias tablas (con el prefijo de tu base de datos) y no toca las tablas de WordPress ni de WooCommerce:</p>
+<table>
+<thead>
+<tr>
+<th>Tabla</th>
+<th>Contenido</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>orp_locations</code></td>
+<td>Locales: código, nombre, activado, prioridad, reglas, local por defecto.</td>
+</tr>
+<tr>
+<td><code>orp_agents</code></td>
+<td>Agentes emparejados y su último latido.</td>
+</tr>
+<tr>
+<td><code>orp_destinations</code></td>
+<td>Salidas (impresoras) reportadas por cada agente.</td>
+</tr>
+<tr>
+<td><code>orp_jobs</code></td>
+<td>Cola: pedido, local, salida, copias, estado, documento y fechas.</td>
+</tr>
+<tr>
+<td><code>orp_pairing_codes</code></td>
+<td>Códigos de emparejamiento generados.</td>
+</tr>
+<tr>
+<td><code>orp_logs</code></td>
+<td>Registro técnico sin datos personales (se conserva 30 días).</td>
+</tr>
+</tbody></table>
+<p>Los ajustes y la plantilla del ticket se guardan como opciones de WordPress y se eliminan (o conservan) al desinstalar según lo descrito en la sección 14.</p>
+<h2>Anexo B. Referencia rápida de presets</h2>
+<table>
+<thead>
+<tr>
+<th>Clave</th>
+<th>Disparadores</th>
+<th>Dedupe</th>
+<th>Destacados</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>aviso</code></td>
+<td><code>created</code></td>
+<td><code>order</code></td>
+<td>Plantilla mínima; corte parcial; sin cajón ni sonido.</td>
+</tr>
+<tr>
+<td><code>completo</code></td>
+<td><code>created</code></td>
+<td><code>order</code></td>
+<td>Todos los campos de plantilla activados.</td>
+</tr>
+<tr>
+<td><code>cocina_cliente</code></td>
+<td><code>created</code>, <code>processing</code></td>
+<td><code>trigger</code></td>
+<td>Corte completo, aviso sonoro; las 2 salidas las reporta el agente.</td>
+</tr>
+<tr>
+<td><code>personalizado</code></td>
+<td>—</td>
+<td>—</td>
+<td>No toca nada: los valores de instancia mandan.</td>
+</tr>
+</tbody></table>
+
+</body>
+</html>

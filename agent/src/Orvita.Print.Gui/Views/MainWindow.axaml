@@ -5,7 +5,7 @@
         x:Class="Orvita.Print.Gui.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Title="Orvita Print"
-        Width="760" Height="640"
+        Width="960" Height="640"
         MinWidth="720" MinHeight="560"
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="True"
