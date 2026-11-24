@@ -76,8 +76,13 @@ public partial class DestinationsView : UserControl
     private void OnEditClick(object? sender, RoutedEventArgs e) =>
         (DataContext as DestinationsViewModel)?.EditRow((sender as Button)?.DataContext as DestinationRow);
 
-    private async void OnRemoveClick(object? sender, RoutedEventArgs e) =>
-        await (DataContext as DestinationsViewModel)?.RemoveAsync((sender as Button)?.DataContext as DestinationRow)!;
+    private async void OnRemoveClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is DestinationsViewModel vm && (sender as Button)?.DataContext is DestinationRow row)
+        {
+            await vm.RemoveAsync(row);
+        }
+    }
 
     private void OnTestClick(object? sender, RoutedEventArgs e)
     {
