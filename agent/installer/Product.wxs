@@ -13,10 +13,15 @@
   - UpgradeCode ESTABLE y ProductCode por versión (MajorUpgrade: desinstala la anterior).
   - Property pública ORVDATA: `msiexec /i ... ORVDATA="D:\Datos"` reubica el directorio de
     datos del servicio (se reenvía al ejecutable como argumento de datos). Vacía → %ProgramData%\OrvitaPrint.
+  - GUI de bandeja (GUI-07, Doc/08 §5): el mismo MSI instala Orvita.Print.Gui.exe en gui\.
+    NO es servicio: exe de sesión de usuario. DESVIACIÓN DOCUMENTADA del «auto-arranque
+    activado por defecto al instalar»: el MSI es per-máquina y Windows Installer NO puede
+    escribir la clave HKCU\…\Run de cada usuario que entre; la GUI la aplica en su PRIMER
+    arranque (con casilla para quitarla; si el usuario la quita no se reactiva sola).
   - Sin firma de código en V1 (Doc/03 §9): SmartScreen avisará; se publica el SHA-256 del MSI
     junto a la descarga (install/checksum.txt) y la guía documenta el aviso.
   - Icono: PLACEHOLDER V1 — sin .ico propio; Añadir/Quitar programas muestra el genérico
-    (F4 añadirá la identidad visual).
+    (F4 añadirá la identidad visual). Los iconos del tray los dibuja la GUI en código.
 
   Se compila con build.ps1 (publica self-contained, cosecha los ficheros y llama a wix build).
 -->
@@ -85,6 +90,10 @@
             <Environment Id="MachinePath" Name="PATH" Value="[InstallFolder]cli" Part="last" Action="set" System="yes" />
           </Component>
         </Directory>
+
+        <!-- GUI de bandeja (GUI-07, Doc/08 §5): exe de SESIÓN DE USUARIO — NO se registra como
+             servicio ni arranca por máquina. Los ficheros van cosechados en GuiFiles. -->
+        <Directory Id="GuiFolder" Name="gui" />
       </Directory>
     </StandardDirectory>
 
@@ -112,6 +121,7 @@
       <ComponentGroupRef Id="ServiceFiles" />
       <ComponentRef Id="CliPathEnvironment" />
       <ComponentGroupRef Id="CliFiles" />
+      <ComponentGroupRef Id="GuiFiles" />
       <ComponentRef Id="DataFolderPermissions" />
     </Feature>
 

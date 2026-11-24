@@ -14,10 +14,12 @@ licencia ECDSA P-256 validada offline y herramientas de release).
 | `src/Orvita.Print.Printing.Windows` | lib (net10.0-windows) | La ÚNICA pieza que toca APIs de Windows de impresión (ADR-12): spooler RAW (`winspool.drv` P/Invoke, datatype RAW), respaldo GDI (`System.Drawing.Printing`), TCP 9100, selector Auto RAW→GDI, enumeración de impresoras (`EnumPrinters` nivel 2 + `GetDefaultPrinter`), decodificador PNG puro (DeflateStream, sin System.Drawing) y el ticket de prueba fijo. |
 | `src/Orvita.Print.Service` | exe (net10.0-windows) | Servicio headless (ADR-09/13): worker + `UseWindowsService`, pipeline claim→render→imprimir→ack, heartbeat 60 s con re-sincronización por `config_version`, logs Serilog con rotación diaria (7 días). F2-08: servidor de la pipe de gestión (`ManagementPipeServer`, ACL restrictiva, una conexión cada vez) con operaciones `pair`, `destination add/list/remove`, `status`, `test`, `doctor`, `restart-poller`; `PairingService` (pair → almacén con token DPAPI → transporte en caliente) y `PollerController` (re-pair/reinicio sin tirar el proceso). DPAPI (`ProtectedData`, ámbito `LocalMachine` + entropía fija) vive aquí (S-01). |
 | `src/Orvita.Print.Cli` | exe (net10.0-windows) | `orvitaprint` (F2-09, ADR-13): cliente de la pipe de gestión — `pair`, `destination add/list/remove`, `status`, `test`, `doctor`, `restart-poller`. Salidas en español, `--help` por comando y códigos de salida para scripts (0 ok · 1 fallo · 2 uso · 3 servicio no en ejecución). NUNCA lee el almacén: todo por la pipe (S-05). |
-| `tests/Orvita.Print.Core.Tests` | xUnit | 227 pruebas sin servidor real ni impresora. |
+| `src/Orvita.Print.Gui` | exe (net10.0) | **GUI de bandeja (Doc/08, post-V1)**: Avalonia 11 + MVVM, ventana única con pestañas (Cola, Salidas, Emparejamiento, Diagnóstico), icono de bandeja con los 5 estados, globos, instancia única. OTRO cliente de la pipe (ADR-13): ops `pair`, `destination.*`, `status`, `test`, `doctor` + las aditivas `queue.list`/`queue.item` (lectura pura del outbox) y `pair.remove` (desemparejar). Sin ventana abierta, cero polling de cola; el token no existe para la GUI (S-05). Ver su `README.md` (guion de verificación manual incluido). |
+| `tests/Orvita.Print.Core.Tests` | xUnit | 235 pruebas sin servidor real ni impresora (incluye `DocumentText`, la vista legible del documento neutro para la GUI). |
 | `tests/Orvita.Print.Printing.Windows.Tests` | xUnit | 44 pruebas: PNG (fixtures generados en la prueba), TCP 9100 con `TcpListener` capturando bytes, selección RAW/GDI/transitorios, layout GDI, spooler/enumerador reales sin hardware. |
-| `tests/Orvita.Print.Service.Tests` | xUnit | 92 pruebas: pipeline completo con servidor y transporte de impresión falsos, outbox (claim por id, reset), release HTTP, heartbeat y re-sincronización, humo del host en consola, DPAPI real (Windows), flujo de pair con HTTP falso (200/400/410/429 + S-03), handler de la pipe (status oculta el token, avisos de destination), servidor de pipe REAL in-proceso con cliente real y licencia (estados missing/valid/expired/invalid, cable en status/doctor, canal de updates bloqueado). |
-| `tests/Orvita.Print.Cli.Tests` | xUnit | 22 pruebas: parser de subcomandos y opciones, validación S-03 en el CLI, ayuda por comando, códigos de salida y clasificación de errores de pipe. |
+| `tests/Orvita.Print.Service.Tests` | xUnit | 111 pruebas: pipeline completo con servidor y transporte de impresión falsos, outbox (claim por id, reset, `queue.list`/`queue.item` de la GUI), release HTTP, heartbeat y re-sincronización, humo del host en consola, DPAPI real (Windows), flujo de pair con HTTP falso (200/400/410/429 + S-03), handler de la pipe (status oculta el token, avisos de destination, unpair), servidor de pipe REAL in-proceso con cliente real y licencia (estados missing/valid/expired/invalid, cable en status/doctor, canal de updates bloqueado). |
+| `tests/Orvita.Print.Cli.Tests` | xUnit | 24 pruebas: parser de subcomandos y opciones, validación S-03 en el CLI, ayuda por comando, códigos de salida y clasificación de errores de pipe. |
+| `tests/Orvita.Print.Gui.Tests` | xUnit + headless | 85 pruebas: lógica pura de la GUI (mapeo de bandeja, estados de cola, filtros, balones), viewmodels con doble de pipe (auto-refresco solo con ventana, banner de errores no vistos, CRUD de salidas, pair/unpair con S-03), roundtrip del canal de la GUI contra un servidor de pipe REAL en proceso, y humo headless de la ventana. |
 | `tools/Orvita.Print.ReleaseTools` | exe (net10.0) | **Herramienta de release NUESTRA, NO se distribuye en el MSI** (F3-02/F3-03): `orvita-release genkey` (ECDSA P-256 licencias + Ed25519 manifiestos), `genlicense` y `genmanifest`. Claves privadas FUERA del repositorio y del servidor (ver su README). |
 | `installer/` | WiX | **MSI por máquina (F3-01)**: registro del servicio auto-start, ACL restrictiva de `%ProgramData%\OrvitaPrint`, property pública `ORVDATA`, major-upgrade con UpgradeCode estable, SHA-256 del MSI en `artifacts/checksum.txt`. Compilar con `build.ps1` (publica self-contained win-x64, cosecha y llama a `wix build`); validar con `build.ps1 -Validate` (`msiexec /a`) y `audit-msi.ps1`. |
 | `docs/guia-instalacion.md` | doc | **Guía de instalación para el profesional (F3-04)**: prerrequisitos, verificación SHA-256, aviso SmartScreen, pair, salidas, test, diagnóstico, desinstalación y updates. |
@@ -29,7 +31,7 @@ licencia ECDSA P-256 validada offline y herramientas de release).
 ```powershell
 cd agent
 dotnet build
-dotnet test   # 385 pruebas: 227 + 44 + 92 + 22
+dotnet test   # 509 pruebas: 235 + 54 + 111 + 24 + 85 (GUI)
 ```
 
 El SDK está fijado en `global.json` (10.0.200 estable, `rollForward latestFeature`,
@@ -90,14 +92,19 @@ powershell installer\build.ps1 -SkipPublish -Validate
 powershell installer\audit-msi.ps1 -MsiPath installer\artifacts\OrvitaPrint-1.0.0.msi
 ```
 
-El MSI instala los binarios en `C:\Program Files\Orvita Print\` (service\ y cli\ + PATH),
-registra el **servicio Windows OrvitaPrint con arranque automático**, crea
-`%ProgramData%\OrvitaPrint` con ACL restrictiva (SYSTEM/Administradores control total, Usuarios
-solo lectura — el token no lo toca nadie más, S-01) y acepta la property pública `ORVDATA` para
-reubicar los datos. Major-upgrade: instalar encima reemplaza la versión anterior; desinstalar
-**conserva** `%ProgramData%\OrvitaPrint` (emparejamiento y licencia intactos). Sin firma de
-código en V1 (Doc/03 §9): el SHA-256 se publica junto a la descarga y la guía documenta el
-aviso de SmartScreen.
+El MSI instala los binarios en `C:\Program Files\Orvita Print\` (service\, cli\ + PATH y gui\ —
+la **GUI de bandeja**, GUI-07), registra el **servicio Windows OrvitaPrint con arranque
+automático**, crea `%ProgramData%\OrvitaPrint` con ACL restrictiva (SYSTEM/Administradores
+control total, Usuarios solo lectura — el token no lo toca nadie más, S-01) y acepta la
+property pública `ORVDATA` para reubicar los datos. Major-upgrade: instalar encima reemplaza
+la versión anterior; desinstalar **conserva** `%ProgramData%\OrvitaPrint` (emparejamiento y
+licencia intactos). Sin firma de código en V1 (Doc/03 §9): el SHA-256 se publica junto a la
+descarga y la guía documenta el aviso de SmartScreen.
+
+Nota GUI (GUI-07): la GUI no es un servicio — es un exe de sesión de usuario; el auto-arranque
+con la sesión (HKCU Run) lo aplica la GUI en su primer arranque, porque un MSI per-máquina no
+puede escribir la clave `Run` de cada usuario (desviación documentada en Doc/08 §5 y en el
+comentario de `Product.wxs`).
 
 Para probar en sesión 0 SIN MSI, los comandos manuales siguen sirviendo:
 

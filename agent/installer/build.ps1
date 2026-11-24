@@ -30,6 +30,7 @@ $publishRoot = Join-Path $installerDir "publish"
 $artifactsDir = Join-Path $installerDir "artifacts"
 $servicePublish = Join-Path $publishRoot "service"
 $cliPublish = Join-Path $publishRoot "cli"
+$guiPublish = Join-Path $publishRoot "gui"
 $wixExe = Join-Path $env:USERPROFILE ".dotnet\tools\wix.exe"
 
 if (-not (Test-Path $wixExe))
@@ -64,18 +65,28 @@ if (-not $SkipPublish)
         -c $Configuration -r win-x64 --self-contained true `
         -o $cliPublish --nologo /v:m
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish del CLI falló." }
+
+    # GUI de bandeja (GUI-07, Doc/08 §5): mismo exe self-contained, junto al servicio y el
+    # CLI. Sin recortar (misma decisión documentada que el servicio: Serilog/SQLite/Avalonia
+    # no permiten trim sin riesgo; el tamaño se mide y se reporta abajo).
+    Write-Host "-- dotnet publish (gui)…"
+    dotnet publish (Join-Path $agentDir "src\Orvita.Print.Gui") `
+        -c $Configuration -r win-x64 --self-contained true `
+        -o $guiPublish --nologo /v:m
+    if ($LASTEXITCODE -ne 0) { throw "dotnet publish de la GUI falló." }
 }
 
-foreach ($dir in @($servicePublish, $cliPublish))
+foreach ($dir in @($servicePublish, $cliPublish, $guiPublish))
 {
     if (-not (Test-Path $dir)) { throw "Falta la salida de publish: $dir (ejecuta sin -SkipPublish)." }
 }
 
-# Tamaño documentado (Doc/07 F3-01): self-contained SIN recortar, V1 sin trim (Serilog/SQLite
-# no lo permiten sin riesgo; el tamaño se revisa en F5 si hace falta).
+# Tamaño documentado (Doc/07 F3-01 + Doc/08 §9): self-contained SIN recortar; se mide antes
+# de decidir un trim (riesgo > beneficio en V1).
 $serviceMb = [math]::Round((Get-ChildItem $servicePublish -Recurse -File | Measure-Object Length -Sum).Sum / 1MB, 1)
 $cliMb = [math]::Round((Get-ChildItem $cliPublish -Recurse -File | Measure-Object Length -Sum).Sum / 1MB, 1)
-Write-Host ("   publicados: service {0} MB · cli {1} MB" -f $serviceMb, $cliMb)
+$guiMb = [math]::Round((Get-ChildItem $guiPublish -Recurse -File | Measure-Object Length -Sum).Sum / 1MB, 1)
+Write-Host ("   publicados: service {0} MB · cli {1} MB · gui {2} MB" -f $serviceMb, $cliMb, $guiMb)
 
 # --------------------------------------------------------------------------- 3. Cosecha
 # Genera PublishedFiles.wxs: un componente por fichero (KeyPath en el fichero, GUID autogenerado
@@ -114,7 +125,8 @@ $(($components -join "`n"))
 
 $harvestedFragments = @(
     (Harvest $servicePublish "ServiceFolder" "ServiceFiles" @("Orvita.Print.Service.exe", "Orvita.Print.Service.pdb")),
-    (Harvest $cliPublish "CliFolder" "CliFiles" @("orvitaprint.pdb"))
+    (Harvest $cliPublish "CliFolder" "CliFiles" @("orvitaprint.pdb")),
+    (Harvest $guiPublish "GuiFolder" "GuiFiles" @("Orvita.Print.Gui.pdb"))
 )
 # Un ÚNICO elemento raíz por fichero .wxs.
 @"
@@ -135,6 +147,7 @@ Write-Host "-- wix build…"
     -d "ProductVersion=$productVersion" `
     -d "ServicePublish=$servicePublish" `
     -d "CliPublish=$cliPublish" `
+    -d "GuiPublish=$guiPublish" `
     -o $msiPath
 if ($LASTEXITCODE -ne 0) { throw "wix build falló." }
 
@@ -163,7 +176,7 @@ if ($Validate)
     Write-Host "-- validación msiexec /a → $extractDir"
     Start-Process msiexec.exe -ArgumentList "/a", "`"$msiPath`"", "/qn", "TARGETDIR=`"$extractDir`"" -Wait
     $extracted = Get-ChildItem $extractDir -Recurse -File
-    foreach ($required in @("Orvita.Print.Service.exe", "orvitaprint.exe", "hostfxr.dll", "appsettings.json"))
+    foreach ($required in @("Orvita.Print.Service.exe", "orvitaprint.exe", "Orvita.Print.Gui.exe", "hostfxr.dll", "appsettings.json"))
     {
         if (-not ($extracted | Where-Object Name -eq $required))
         {
