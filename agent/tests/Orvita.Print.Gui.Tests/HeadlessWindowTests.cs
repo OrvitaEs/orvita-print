@@ -54,6 +54,13 @@ public sealed class HeadlessWindowTests
         // Hay contenido seleccionado en pantalla (el TabControl re-tematizado lo muestra).
         Assert.NotNull(tabs.SelectedContent);
 
+        // Las SEIS páginas se construyen sin excepción (los XAML nuevos también).
+        for (var i = 0; i < tabNames.Count; i++)
+        {
+            tabs.SelectedIndex = i;
+            Assert.NotNull(tabs.SelectedContent);
+        }
+
         window.Close();
     }
 
