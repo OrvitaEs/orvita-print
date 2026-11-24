@@ -3,7 +3,7 @@
  * Siembra el contador del rate limit a 119 para forzar el 429 en la siguiente
  * petición HTTP (verificación B1 end-to-end).
  *
- * Uso: npx wp-env run cli wp eval-file .../_seed_rl.php <agent_id>
+ * Uso: npx @wordpress/env run cli wp eval-file .../_seed_rl.php <agent_id>
  */
 
 $agent_id = isset( $args[0] ) ? (int) $args[0] : 0;

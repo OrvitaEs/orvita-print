@@ -13,11 +13,11 @@ Desde la carpeta `orp-print/` (requiere Docker):
 
 ```bash
 # 1. Arrancar WordPress con el plugin activado (puerto 8888)
-npx wp-env start
+npx @wordpress/env start
 
 # 2. Sembrar el entorno: 3 locales, 1 salida, 1 agente y 1 trabajo de prueba.
 #    El TOKEN del agente se imprime en consola y solo se muestra una vez: cópialo.
-npx wp-env run cli wp orp seed
+npx @wordpress/env run cli wp orp seed
 
 # 3. Comprobar la salud de la API (público, sin token)
 curl -s http://localhost:8888/wp-json/orp-print/v1/health
@@ -30,7 +30,7 @@ curl -s -H "Authorization: Bearer TOKEN" http://localhost:8888/wp-json/orp-print
 ```
 
 Consejo: si no tienes PHP local, los comandos 4/5 también funcionan dentro del contenedor:
-`npx wp-env run cli php /var/www/html/wp-content/plugins/orp-print/tools/simulator.php --url=http://localhost:8888 --token=TOKEN --once`
+`npx @wordpress/env run cli php /var/www/html/wp-content/plugins/orp-print/tools/simulator.php --url=http://localhost:8888 --token=TOKEN --once`
 
 ## Qué probar además (definición de hecho de F0, `Doc/06` §10)
 
@@ -42,7 +42,7 @@ Consejo: si no tienes PHP local, los comandos 4/5 también funcionan dentro del 
 | Token revocado → 401 | `UPDATE wp_orp_agents SET status='revoked'` y reintenta |
 | Fallo simulado | `php tools/simulator.php --url=... --token=TOKEN --once --fail=orp_printer_not_found` |
 | Respaldo de cabecera | Envía el token en `X-Orp-Token` en lugar de `Authorization` |
-| Regenerar la siembra | `npx wp-env run cli wp orp seed --reset` |
+| Regenerar la siembra | `npx @wordpress/env run cli wp orp seed --reset` |
 
 ## Estructura
 

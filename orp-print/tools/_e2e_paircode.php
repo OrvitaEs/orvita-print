@@ -1,6 +1,6 @@
 <?php
 global $wpdb;
-$created = \Orvita\PrintBridge\Domain\PairingCodes::create( 110, 1 );
+$created = \Orvita\PrintBridge\Domain\PairingCodes::create( 113, 1 );
 if ( ! $created ) {
 	WP_CLI::error( 'No se pudo generar el código.' );
 }

@@ -1,7 +1,7 @@
 <?php
 /**
  * Verificación dinámica F1-05 + F1-06 (ejecutar dentro del cli de wp-env):
- *   npx wp-env run cli wp eval-file /var/www/html/wp-content/plugins/orp-print/tools/_verify_f1_05_06.php
+ *   npx @wordpress/env run cli wp eval-file /var/www/html/wp-content/plugins/orp-print/tools/_verify_f1_05_06.php
  *
  * Comprueba con WooCommerce REAL (pedidos vía API CRUD/HPOS):
  * 1. Pedido creado → un trabajo por salida activa del local (fan-out) con

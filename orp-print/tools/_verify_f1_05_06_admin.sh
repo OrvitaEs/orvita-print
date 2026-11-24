@@ -1,7 +1,7 @@
 #!/bin/sh
 # Verificación HTTP de los fixes del tester y del panel de destinos F1-06,
 # dentro del cli de wp-env:
-#   npx wp-env run cli sh /var/www/html/wp-content/plugins/orp-print/tools/_verify_f1_05_06_admin.sh
+#   npx @wordpress/env run cli sh /var/www/html/wp-content/plugins/orp-print/tools/_verify_f1_05_06_admin.sh
 #
 # Comprueba: guardar «Ninguno» como local por defecto limpia el is_default
 # huérfano de la tabla (sincronía bidireccional completa), el panel de

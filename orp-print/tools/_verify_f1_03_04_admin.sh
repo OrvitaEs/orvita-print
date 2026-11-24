@@ -1,6 +1,6 @@
 #!/bin/sh
 # Verificación HTTP de las páginas F1-03/F1-04 dentro del cli de wp-env:
-#   npx wp-env run cli sh /var/www/html/wp-content/plugins/orp-print/tools/_verify_f1_03_04_admin.sh
+#   npx @wordpress/env run cli sh /var/www/html/wp-content/plugins/orp-print/tools/_verify_f1_03_04_admin.sh
 #
 # Comprueba: página «Plantilla del ticket» con sus campos, guardado con nonce
 # (subida de orp_template_version), vista previa limpia (demo y por pedido) sin

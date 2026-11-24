@@ -1,7 +1,7 @@
 #!/bin/sh
 # Verificación end-to-end del lote de cierre de deuda F0 (F0-11, B1, B2 + seed).
 # Ejecutar DENTRO del contenedor cli de wp-env:
-#   npx wp-env run cli sh /var/www/html/wp-content/plugins/orp-print/tools/_verify_f0.sh
+#   npx @wordpress/env run cli sh /var/www/html/wp-content/plugins/orp-print/tools/_verify_f0.sh
 set -u
 
 BASE='http://wordpress/wp-json/orp-print/v1'

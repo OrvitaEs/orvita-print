@@ -3,7 +3,7 @@
  * Arranque de las pruebas PHPUnit con la suite de WordPress.
  *
  * Uso (con wp-env, dentro de orp-print/):
- *   WP_TESTS_DIR=$(npx wp-env run tests-cli wp eval 'echo ABSPATH;') vendor/bin/phpunit
+ *   WP_TESTS_DIR=$(npx @wordpress/env run tests-cli wp eval 'echo ABSPATH;') vendor/bin/phpunit
  * o con una instalación local que tenga la suite de pruebas de WordPress.
  */
 

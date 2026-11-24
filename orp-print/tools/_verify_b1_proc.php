@@ -6,7 +6,7 @@
  * serve_request(), no en dispatch(), así que la aserción va sobre lo que
  * el servidor envía (lo que llega por HTTP real).
  *
- * Uso: npx wp-env run cli wp eval-file .../_verify_b1_proc.php <TOKEN>
+ * Uso: npx @wordpress/env run cli wp eval-file .../_verify_b1_proc.php <TOKEN>
  */
 
 if ( 'cli' !== php_sapi_name() ) {

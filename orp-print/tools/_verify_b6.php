@@ -4,7 +4,7 @@
  * transient y ajuste de purga, ejecuta uninstall.php tal cual y comprueba la
  * limpieza completa (tablas, opciones, capacidad y transients orp_rl_*).
  *
- * Uso: npx wp-env run tests-cli wp eval-file /var/www/html/wp-content/plugins/orp-print/tools/_verify_b6.php
+ * Uso: npx @wordpress/env run tests-cli wp eval-file /var/www/html/wp-content/plugins/orp-print/tools/_verify_b6.php
  */
 
 // --- Preparación -----------------------------------------------------------

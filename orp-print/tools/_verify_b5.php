@@ -3,7 +3,7 @@
  * Verificación B5 in-process: dos upsert seguidos sobre (location_id, role)
  * deben dejar UNA fila y los valores de la última.
  *
- * Uso: npx wp-env run cli wp eval-file .../_verify_b5.php
+ * Uso: npx @wordpress/env run cli wp eval-file .../_verify_b5.php
  */
 
 global $wpdb;

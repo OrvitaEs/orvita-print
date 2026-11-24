@@ -1,7 +1,7 @@
 <?php
 /**
  * Verificación dinámica F1-03 + F1-04 (ejecutar dentro del cli de wp-env):
- *   npx wp-env run cli wp eval-file /var/www/html/wp-content/plugins/orp-print/tools/_verify_f1_03_04.php
+ *   npx @wordpress/env run cli wp eval-file /var/www/html/wp-content/plugins/orp-print/tools/_verify_f1_03_04.php
  *
  * Comprueba: guardado de plantilla con subida de orp_template_version y
  * registro, documento según la selección de campos desde un pedido REAL
