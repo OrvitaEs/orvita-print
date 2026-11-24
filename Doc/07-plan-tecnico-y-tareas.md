@@ -173,6 +173,18 @@ Hallazgos estáticos de la ronda 1: M1 → cerrado con F0-11 (verificado byte a 
 
 **DoD F3:** instalación en máquina limpia sin pasos externos; actualización fallida conserva la versión anterior.
 
+---
+
+## 3bis · GUI del agente (post-V1, adelantada)
+
+> Especificación: `08-gui-agente-avalonia.md`. Tareas GUI-01…08 **completas** (2026-11-24), adelantadas respecto al gatillo del piloto por decisión del socio.
+
+**Implementado:** `Orvita.Print.Gui` (Avalonia 11.3 + MVVM) como otra cliente de la pipe de gestión (ADR-13): icono de bandeja con 5 estados, pestañas Cola (estados Pendiente/Imprimiéndose/Impreso/Error/Reimpreso tras corte, filtros, búsqueda, auto-refresh de 3 s solo con ventana abierta, banner de incidencias sin revisar + «Marcar vistos»), Salidas, Emparejamiento (token jamás en pantalla, desemparejar por pipe) y Diagnóstico (doctor + ZIP + visor de log). Protocolo ampliado de forma aditiva: `queue.list`, `queue.item`, `pair.remove`. Auto-arranque HKCU en el primer arranque de la GUI (desviación documentada: MSI per-máquina no escribe Run de usuario). MSI incluye la GUI (63,3 MB). **509 pruebas en verde** (85 de GUI, incl. headless Avalonia). Commits: `3635a72`, `85184f9`, `b644dc9`, `13f4620`.
+
+**Bugs cazados por el primer arranque real** (el humo de implementación fue por la pipe; la GUI nunca se había abierto en un escritorio):
+1. `app.manifest` mal formado (raíz sin `manifestVersion="1.0"`, llevaba un `manifestType` no estándar) → Windows rechazaba el exe con error SxS antes de ejecutar nada. Corregido (`6138770`). **Lección:** el humo de una app de UI debe incluir **arrancar la app**, no solo su lógica.
+2. Verificado en vivo con el socio: cola con estados y detalle del documento, banner + «Marcar vistos» (el banner también se marca al abrir el detalle del trabajo — comportamiento validado), icono de bandeja, y demo completa con impresora PDF + impresora inexistente (4 pedidos, 12 trabajos: verdes/rojos en vivo, `cocina-tcp` en el servidor y no en la GUI, como manda §5.8).
+
 ### F4 · QA y despliegue del piloto — 20 h · 1 semana + 30 días
 
 | ID | Tarea | Entregable | Est. |
@@ -245,4 +257,4 @@ F0 (2 días) ──► F1 (1 sem) ──► F3 puede solaparse con F2 ──► 
 
 ## 8. Fuera de V1 (recordatorio)
 
-Relay y multiplataforma en producción, Android/iOS, GUI del agente (backlog, ADR-13), plantillas por rol, PrestaShop/Shopify, Verifactu/TicketBAI como SIF integrado, email/WhatsApp al cliente final. Detalle y prioridades: `05` §8.
+Relay y multiplataforma en producción, Android/iOS, plantillas por rol, PrestaShop/Shopify, Verifactu/TicketBAI como SIF integrado, email/WhatsApp al cliente final. Detalle y prioridades: `05` §8. La GUI del agente estaba en este backlog y se **adelantó por decisión del socio** — implementada y verificada (ver el bloque «GUI» más abajo).

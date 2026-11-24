@@ -237,6 +237,6 @@ El tema del cliente ya resuelve la selección de local; el plugin la lee sin toc
 | Media | Plantillas distintas por rol | Cocina sin precios, resguardo de cliente, etiqueta de reparto |
 | Media | Envío del ticket al cliente por email/WhatsApp | Reduce llamadas del cliente final |
 | Media | Versión Android | Elimina el coste de soporte de Windows |
-| Media | GUI de gestión del agente (estado tipo bandeja) | **Planificada en `08-gui-agente-avalonia.md`** (tareas GUI-01..08, ~5,5 días). Otra cliente de la pipe de gestión (ADR-13), sin capacidades nuevas en el servicio. Gatillo: piloto F4 o demanda del canal de venta |
+| Media | GUI de gestión del agente (estado tipo bandeja) | **Implementada el 2026-11-24** (adelantada por decisión del socio; espec y tareas en `08-gui-agente-avalonia.md`, estado en `07` §3bis). Otra cliente de la pipe de gestión (ADR-13), sin capacidades nuevas en el servicio |
 | Baja | Panel de métricas de impresión | Argumento de venta para agencias |
 | Baja | White-label completo | Necesario para el SKU Ilimitado |
