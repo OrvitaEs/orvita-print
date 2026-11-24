@@ -1,0 +1,73 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Orvita.Print.Gui.ViewModels"
+        xmlns:models="using:Orvita.Print.Gui.Models"
+        xmlns:v="using:Orvita.Print.Gui.Views"
+        x:Class="Orvita.Print.Gui.Views.QueueView"
+        x:DataType="vm:QueueViewModel">
+  <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="0,8,0,0">
+
+    <!-- Aviso de errores no vistos (persistente hasta que el usuario los abra, Doc/08 §4.2). -->
+    <Border Grid.Row="0" IsVisible="{Binding BannerVisible}" Padding="10,6" CornerRadius="4" Background="#FDECEA">
+      <StackPanel Orientation="Horizontal" Spacing="10">
+        <TextBlock Text="{Binding BannerText}" FontWeight="Bold" Foreground="#C62828" VerticalAlignment="Center" />
+        <Button Command="{Binding MarkAllSeenCommand}" Content="Marcar vistos" />
+      </StackPanel>
+    </Border>
+
+    <!-- Filtro por estado + búsqueda por nº de pedido (Doc/08 §4.2). -->
+    <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,8,0,8">
+      <TextBlock Text="Estado:" VerticalAlignment="Center" />
+      <ComboBox ItemsSource="{Binding StateFilterOptions}"
+                SelectedValue="{Binding StateFilter}"
+                SelectedValueBinding="{Binding Value}"
+                DisplayMemberBinding="{Binding Display}"
+                MinWidth="180" />
+      <TextBlock Text="Buscar pedido:" VerticalAlignment="Center" />
+      <TextBox Text="{Binding SearchText}" Watermark="#778899" MinWidth="160" />
+      <Button Content="Actualizar" Click="OnRefreshClick" />
+      <TextBlock Text="{Binding LastRefreshText}" VerticalAlignment="Center" Margin="8,0,0,0" Opacity="0.7" />
+    </StackPanel>
+
+    <!-- Lista de trabajos: encabezado + filas con badge de estado coloreado. -->
+    <Grid Grid.Row="2" RowDefinitions="Auto,*">
+      <Grid Grid.Row="0" ColumnDefinitions="90,120,60,150,150,70,*,150" Margin="0,0,0,2">
+        <TextBlock Grid.Column="0" Text="Pedido" FontWeight="Bold" />
+        <TextBlock Grid.Column="1" Text="Salida / rol" FontWeight="Bold" />
+        <TextBlock Grid.Column="2" Text="Copias" FontWeight="Bold" />
+        <TextBlock Grid.Column="3" Text="Llegada" FontWeight="Bold" />
+        <TextBlock Grid.Column="4" Text="Impresión" FontWeight="Bold" />
+        <TextBlock Grid.Column="5" Text="Intentos" FontWeight="Bold" />
+        <TextBlock Grid.Column="6" Text="Último error" FontWeight="Bold" />
+        <TextBlock Grid.Column="7" Text="Estado" FontWeight="Bold" />
+      </Grid>
+      <ListBox Grid.Row="1" ItemsSource="{Binding FilteredRows}" SelectedItem="{Binding SelectedJob}">
+        <ListBox.ItemTemplate>
+          <DataTemplate DataType="models:QueueJobRow">
+            <Grid ColumnDefinitions="90,120,60,150,150,70,*,150" Margin="0,1">
+              <TextBlock Grid.Column="0" Text="{Binding OrderDisplay}" />
+              <TextBlock Grid.Column="1" Text="{Binding PrinterRole}" />
+              <TextBlock Grid.Column="2" Text="{Binding Copies}" />
+              <TextBlock Grid.Column="3" Text="{Binding CreatedAt, Converter={x:Static v:TimestampConverter.Instance}}" />
+              <TextBlock Grid.Column="4" Text="{Binding PrintedAt, Converter={x:Static v:TimestampConverter.Instance}}" />
+              <TextBlock Grid.Column="5" Text="{Binding Attempts}" />
+              <TextBlock Grid.Column="6" Text="{Binding LastErrorDisplay}" TextTrimming="CharacterEllipsis" Foreground="#C62828" />
+              <Border Grid.Column="7" HorizontalAlignment="Left" CornerRadius="8" Padding="8,2" Background="{Binding StateColor, Converter={x:Static v:HexToBrushConverter.Instance}}">
+                <TextBlock Text="{Binding StateLabel}" Foreground="White" FontSize="12" />
+              </Border>
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Grid>
+
+    <!-- Detalle del trabajo: documento legible + marcas de tiempo completas (op queue.item). -->
+    <Grid Grid.Row="3" RowDefinitions="Auto,150" Margin="0,8,0,0">
+      <TextBlock Grid.Row="0" Text="{Binding DetailTitle}" FontWeight="Bold" Margin="0,0,0,4" />
+      <TextBox Grid.Row="1" Text="{Binding DetailText}" IsReadOnly="True" TextWrapping="Wrap"
+               FontFamily="Consolas, 'Cascadia Mono', monospace"
+               ScrollViewer.VerticalScrollBarVisibility="Auto"
+               AcceptsReturn="True" />
+    </Grid>
+  </Grid>
+</UserControl>

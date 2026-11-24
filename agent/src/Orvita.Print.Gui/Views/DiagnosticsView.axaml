@@ -1,0 +1,35 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Orvita.Print.Gui.ViewModels"
+        xmlns:v="using:Orvita.Print.Gui.Views"
+        x:Class="Orvita.Print.Gui.Views.DiagnosticsView"
+        x:DataType="vm:DiagnosticsViewModel">
+  <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="0,8,0,0">
+
+    <!-- Resumen del doctor (§4.5: versiones, licencia, poller, cola). -->
+    <TextBox Grid.Row="0" Text="{Binding SummaryText}" IsReadOnly="True" TextWrapping="Wrap"
+             MinHeight="180" VerticalContentAlignment="Top" AcceptsReturn="True"
+             FontFamily="Consolas, 'Cascadia Mono', monospace" />
+
+    <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,8,0,8">
+      <Button Content="Actualizar diagnóstico" Click="OnLoadClick" />
+      <Button Content="Generar ZIP de diagnóstico" Click="OnZipClick" />
+      <Button Content="Abrir carpeta" Click="OnOpenFolderClick" IsEnabled="{Binding ZipPath, Converter={x:Static v:NotNullConverter.Instance}}" />
+      <Button Content="Ver últimas líneas del log" Click="OnLogClick" />
+    </StackPanel>
+
+    <!-- Visor del log: el fichero lo lee la GUI (solo lectura); la ruta la dio la pipe.
+         El token y la BD NUNCA se leen ni se muestran (S-05). -->
+    <DockPanel Grid.Row="3">
+      <TextBlock DockPanel.Dock="Top" Text="{Binding Error}" Foreground="#C62828" TextWrapping="Wrap" />
+      <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,4">
+        <TextBlock FontWeight="Bold" Text="Últimas líneas del registro (solo lectura)" />
+        <TextBlock Text="{Binding LogPath}" FontSize="12" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+      </StackPanel>
+      <TextBox Text="{Binding LogText}" IsReadOnly="True" TextWrapping="NoWrap" AcceptsReturn="True"
+               FontFamily="Consolas, 'Cascadia Mono', monospace"
+               ScrollViewer.VerticalScrollBarVisibility="Auto"
+               ScrollViewer.HorizontalScrollBarVisibility="Auto" />
+    </DockPanel>
+  </Grid>
+</UserControl>

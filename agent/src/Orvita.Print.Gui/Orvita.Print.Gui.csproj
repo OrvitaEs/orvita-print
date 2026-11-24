@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <Description>GUI de bandeja del agente Orvita Print (Doc/08, ADR-13): OTRO cliente de la pipe de gestión — toda mutación pasa por la pipe; la GUI no abre la SQLite, no lee appsettings y no escribe estado del servicio. Avalonia 11 + MVVM (CommunityToolkit).</Description>
+    <RootNamespace>Orvita.Print.Gui</RootNamespace>
+    <!-- El ejecutable de la GUI junto al servicio y el CLI en el MSI (GUI-07). -->
+    <AssemblyName>Orvita.Print.Gui</AssemblyName>
+    <!-- net10.0 puro (Doc/08 §2): NamedPipeClientStream y P/Invoke de Shell_NotifyIcon viven en
+         la BCL; Core/Contracts siguen sin tocar nada de Windows (ADR-12). El P/Invoke de bandeja
+         es detalle de la GUI (V1 solo Windows, Doc/03 §13). -->
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- V1 solo Windows (Doc/03 §13): pipe de Windows, Shell_NotifyIcon, registro HKCU y
+         Explorer son correctos aquí; el analizador CA1416 avisa en vano para net10.0 puro. -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.23" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.23" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.23" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- ManagementProtocol + DocumentText + los tipos del outbox (portable, ADR-12). -->
+    <ProjectReference Include="..\Orvita.Print.Core\Orvita.Print.Core.csproj" />
+  </ItemGroup>
+
+</Project>

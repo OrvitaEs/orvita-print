@@ -1,0 +1,47 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Orvita.Print.Gui.ViewModels"
+        xmlns:v="using:Orvita.Print.Gui.Views"
+        x:Class="Orvita.Print.Gui.Views.PairingView"
+        x:DataType="vm:PairingViewModel">
+  <StackPanel Margin="0,12,0,0" Spacing="12" MaxWidth="640" HorizontalAlignment="Left">
+
+    <!-- Estado actual: ServerUrl visible, token OCULTO (S-05: nunca viaja ni se muestra). -->
+    <Border Padding="12" CornerRadius="4" Background="#FAFAFA">
+      <StackPanel Spacing="6">
+        <TextBlock Text="Estado del emparejamiento" FontWeight="Bold" FontSize="15" />
+        <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
+        <TextBlock Text="El token de acceso se guarda CIFRADO en el equipo (DPAPI) y jamás se muestra en pantalla."
+                   FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+      </StackPanel>
+    </Border>
+
+    <!-- Flujo: pegar el código de 6 dígitos → pair → confirmación con el nombre del local. -->
+    <Border Padding="12" CornerRadius="4" Background="#FAFAFA">
+      <StackPanel Spacing="8">
+        <TextBlock Text="Emparejar con la tienda" FontWeight="Bold" FontSize="15" />
+        <TextBlock Text="1. En el panel de Orvita Print (WordPress), genera un código de emparejamiento." TextWrapping="Wrap" />
+        <TextBlock Text="2. Pega aquí la URL de tu tienda y el código de 6 dígitos:" TextWrapping="Wrap" />
+        <TextBox Text="{Binding ServerUrlInput}" Watermark="https://tu-tienda.es/wp-json/orp-print/v1" />
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <TextBox Text="{Binding CodeInput}" Watermark="482913" MaxLength="6" Width="140" />
+          <Button Content="Emparejar" Click="OnPairClick" IsEnabled="{Binding !IsBusy}" />
+          <ProgressBar IsIndeterminate="True" Width="90" Height="6" IsVisible="{Binding IsBusy}" VerticalAlignment="Center" />
+        </StackPanel>
+        <CheckBox Content="Permitir HTTP sin cifrar (SOLO desarrollo, p. ej. wp-env)"
+                  IsChecked="{Binding AllowInsecureHttp}" />
+        <TextBlock Text="{Binding Message}" TextWrapping="Wrap"
+                   Foreground="{Binding IsError, Converter={x:Static v:BoolToBrushConverter.Instance}}" />
+      </StackPanel>
+    </Border>
+
+    <!-- Desemparejar: confirmación previa; equivale a revocar desde el panel. -->
+    <Border Padding="12" CornerRadius="4" Background="#FFF8F8">
+      <StackPanel Spacing="8">
+        <TextBlock Text="Desemparejar" FontWeight="Bold" FontSize="15" />
+        <TextBlock Text="El agente deja de recibir pedidos y borra URL, token y local de este equipo. El administrador deberá revocar (o confirmar la baja) desde el panel." TextWrapping="Wrap" />
+        <Button Content="Desemparejar este equipo…" Click="OnUnpairClick" IsEnabled="{Binding Paired}" />
+      </StackPanel>
+    </Border>
+  </StackPanel>
+</UserControl>

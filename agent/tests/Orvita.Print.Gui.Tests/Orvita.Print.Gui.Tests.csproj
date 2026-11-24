@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- net10.0-windows: cruza con Orvita.Print.Service (validación cruzada S-03) y arranca
+         pruebas headless de Avalonia en Windows. El proyecto GUI en sí sigue siendo net10.0. -->
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <!-- V1 solo Windows: el proyecto GUI compila P/Invoke de bandeja y registro HKCU. -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Avalonia.Headless.XUnit 11.3 se compila contra xunit 2.4: con 2.9 el runner de
+         headless lanza NRE en InvokeTestMethodAsync (probado). El resto del repo usa 2.9.3;
+         aquí el framework headless fija 2.4.x. -->
+    <PackageReference Include="xunit" Version="2.4.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Avalonia.Headless.XUnit" Version="11.3.23" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Orvita.Print.Gui\Orvita.Print.Gui.csproj" />
+    <!-- Roundtrip real: ManagementPipeServer + handler del SERVICIO en proceso (sin su
+         proyecto de pruebas: arrastra xunit 2.9.3 y rompe el headless de Avalonia 11.3). -->
+    <ProjectReference Include="..\..\src\Orvita.Print.Service\Orvita.Print.Service.csproj" />
+  </ItemGroup>
+
+</Project>

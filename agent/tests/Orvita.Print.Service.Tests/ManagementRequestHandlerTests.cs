@@ -385,6 +385,49 @@ public sealed class ManagementRequestHandlerTests : IDisposable
         Assert.Contains("pair", response.Error);
     }
 
+    // ------------------------------------------------------------------------ unpair (GUI-05)
+
+    [Fact]
+    public async Task Unpair_sin_emparejar_da_not_paired()
+    {
+        var response = await _handler.HandleAsync(Request(ManagementProtocol.Operations.PairRemove, null), CancellationToken.None);
+
+        Assert.False(response.Ok);
+        Assert.Equal("not_paired", response.Code);
+        Assert.Contains("no está emparejado", response.Error);
+    }
+
+    [Fact]
+    public async Task Unpair_para_el_poller_borra_el_emparejamiento_y_conserva_las_salidas()
+    {
+        await PairOnceAsync();
+        _store.UpsertDestination(new DestinationOptions { Role = "default", PrinterName = "EPSON TM-T20III" });
+        _outbox.Enqueue(1888, "default", 1, "{}");
+
+        var response = await _handler.HandleAsync(Request(ManagementProtocol.Operations.PairRemove, null), CancellationToken.None);
+
+        Assert.True(response.Ok);
+        Assert.True(response.Data!.Value.GetProperty("removed").GetBoolean());
+
+        // Emparejamiento fuera: estado visible claro, sin transporte y sin token (S-05).
+        Assert.False(_store.GetPairing().IsPaired);
+        Assert.Null(_connection.Transport);
+        var texto = JsonSerializer.Serialize(response, ManagementProtocol.Options);
+        Assert.DoesNotContain("token", texto);
+
+        // El poller quedó parado (sin token no puede correr).
+        Assert.False(_poller.IsRunning);
+
+        // Las salidas se conservan (re-emparejar no las reconfigura) y la cola TAMBIÉN.
+        Assert.Single(_store.ListDestinations());
+        Assert.NotNull(_outbox.Get(1888));
+
+        // Y un segundo unpair ya no tiene nada que borrar.
+        var segundo = await _handler.HandleAsync(Request(ManagementProtocol.Operations.PairRemove, null), CancellationToken.None);
+        Assert.False(segundo.Ok);
+        Assert.Equal("not_paired", segundo.Code);
+    }
+
     [Fact]
     public async Task RestartPoller_emparejado_reinicia_y_devuelve_estado()
     {

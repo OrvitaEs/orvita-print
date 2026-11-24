@@ -176,6 +176,14 @@ public sealed class AgentWorker : BackgroundService
 
     private async Task SendHeartbeatSafelyAsync(CancellationToken stoppingToken)
     {
+        // Sin emparejamiento (arranque pendiente de pair o tras «desemparejar», GUI-05): no
+        // hay latido que mandar y NO es un fallo — el bucle sigue vivo para el próximo pair.
+        if (_connection.Transport is null)
+        {
+            _logger.LogDebug("Sin emparejamiento: el latido no se envía (a la espera de pair por la pipe).");
+            return;
+        }
+
         try
         {
             await _heartbeat.SendOnceAsync(stoppingToken).ConfigureAwait(false);

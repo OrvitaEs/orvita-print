@@ -5,6 +5,7 @@
     <Project Path="src/Orvita.Print.Printing.Windows/Orvita.Print.Printing.Windows.csproj" />
     <Project Path="src/Orvita.Print.Service/Orvita.Print.Service.csproj" />
     <Project Path="src/Orvita.Print.Cli/Orvita.Print.Cli.csproj" />
+    <Project Path="src/Orvita.Print.Gui/Orvita.Print.Gui.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Orvita.Print.Core.Tests/Orvita.Print.Core.Tests.csproj" />

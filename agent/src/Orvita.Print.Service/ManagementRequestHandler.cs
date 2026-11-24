@@ -164,6 +164,7 @@ public sealed class ManagementRequestHandler
                 version = AgentVersion.Current,
             }),
             ManagementProtocol.Operations.Pair => await PairAsync(request, cancellationToken).ConfigureAwait(false),
+            ManagementProtocol.Operations.PairRemove => await UnpairAsync(request, cancellationToken).ConfigureAwait(false),
             ManagementProtocol.Operations.DestinationAdd => DestinationAdd(request),
             ManagementProtocol.Operations.DestinationList => DestinationList(request.Id),
             ManagementProtocol.Operations.DestinationRemove => DestinationRemove(request),
@@ -480,6 +481,33 @@ public sealed class ManagementRequestHandler
             zip_path = zipPath,
             zip_bytes = zipBytes,
         });
+    }
+
+    // ------------------------------------------------------------------------ unpair (GUI-05)
+
+    /// <summary>
+    /// Desemparejar (GUI-05, Doc/08 §4.4 «Desemparejar»): para el poller, quita el transporte
+    /// en memoria y borra URL+token+local del almacén. Las SALIDAS se conservan (igual que el
+    /// CLI no las toca al emparejar); la revocación EN EL SERVIDOR queda como paso del
+    /// administrador desde el panel (Doc/08 §4.4). Sin token no hay latidos: el worker queda
+    /// a la espera de un pair nuevo, y la respuesta no contiene secreto alguno (S-05).
+    /// </summary>
+    private async Task<ManagementResponse> UnpairAsync(ManagementRequest request, CancellationToken cancellationToken)
+    {
+        var pairing = _store.GetPairing();
+        if (!pairing.IsPaired)
+        {
+            return ManagementResponse.Failure(request.Id, "El agente no está emparejado: no hay nada que desemparejar.", "not_paired");
+        }
+
+        await _poller.StopAsync().ConfigureAwait(false);
+        _connection.ClearTransport();
+        _store.ClearPairing();
+        _logger.LogInformation(
+            "Desemparejado por la pipe de gestión: poller parado y emparejamiento borrado del almacén (el local «{Location}» debe revocarse en el panel).",
+            pairing.LocationName ?? pairing.LocationCode ?? pairing.ServerUrl);
+
+        return ManagementResponse.Success(request.Id, new { removed = true });
     }
 
     // ------------------------------------------------------------------------ queue (GUI-02)
