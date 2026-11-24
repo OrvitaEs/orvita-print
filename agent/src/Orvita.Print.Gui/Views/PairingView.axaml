@@ -4,44 +4,95 @@
         xmlns:v="using:Orvita.Print.Gui.Views"
         x:Class="Orvita.Print.Gui.Views.PairingView"
         x:DataType="vm:PairingViewModel">
-  <StackPanel Margin="0,12,0,0" Spacing="12" MaxWidth="640" HorizontalAlignment="Left">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel MaxWidth="660" HorizontalAlignment="Left">
 
-    <!-- Estado actual: ServerUrl visible, token OCULTO (S-05: nunca viaja ni se muestra). -->
-    <Border Padding="12" CornerRadius="4" Background="#FAFAFA">
-      <StackPanel Spacing="6">
-        <TextBlock Text="Estado del emparejamiento" FontWeight="Bold" FontSize="15" />
-        <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
-        <TextBlock Text="El token de acceso se guarda CIFRADO en el equipo (DPAPI) y jamás se muestra en pantalla."
-                   FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
-      </StackPanel>
-    </Border>
+      <!-- Cabecera (GUI-09): tile azul con icono de tienda. -->
+      <v:PageHeader Icon="{StaticResource Icon.Store}"
+                    Title="Emparejamiento"
+                    Subtitle="Estado de la conexión con la tienda"/>
 
-    <!-- Flujo: pegar el código de 6 dígitos → pair → confirmación con el nombre del local. -->
-    <Border Padding="12" CornerRadius="4" Background="#FAFAFA">
-      <StackPanel Spacing="8">
-        <TextBlock Text="Emparejar con la tienda" FontWeight="Bold" FontSize="15" />
-        <TextBlock Text="1. En el panel de Orvita Print (WordPress), genera un código de emparejamiento." TextWrapping="Wrap" />
-        <TextBlock Text="2. Pega aquí la URL de tu tienda y el código de 6 dígitos:" TextWrapping="Wrap" />
-        <TextBox Text="{Binding ServerUrlInput}" Watermark="https://tu-tienda.es/wp-json/orp-print/v1" />
-        <StackPanel Orientation="Horizontal" Spacing="8">
-          <TextBox Text="{Binding CodeInput}" Watermark="482913" MaxLength="6" Width="140" />
-          <Button Content="Emparejar" Click="OnPairClick" IsEnabled="{Binding !IsBusy}" />
-          <ProgressBar IsIndeterminate="True" Width="90" Height="6" IsVisible="{Binding IsBusy}" VerticalAlignment="Center" />
+      <!-- Estado actual: verde si emparejado, ámbar si falta algo. El ServerUrl es visible;
+           el token OCULTO SIEMPRE (S-05: no viaja por la pipe ni se muestra). -->
+      <Border Classes="status-ok" IsVisible="{Binding Paired}">
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <Path Data="{StaticResource Icon.CheckCircle}" Width="26" Height="26"
+                Stretch="Uniform" Fill="{StaticResource App.Green.Brush}" VerticalAlignment="Top"/>
+          <StackPanel Spacing="4">
+            <TextBlock Text="Estado del emparejamiento" FontWeight="Bold" Foreground="#1B5E20"/>
+            <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" Foreground="#1B5E20"/>
+            <TextBlock Classes="hint" Opacity="0.8" Foreground="#1B5E20"
+                       Text="El token de acceso se guarda CIFRADO en el equipo (DPAPI) y jamás se muestra en pantalla."/>
+          </StackPanel>
         </StackPanel>
-        <CheckBox Content="Permitir HTTP sin cifrar (SOLO desarrollo, p. ej. wp-env)"
-                  IsChecked="{Binding AllowInsecureHttp}" />
-        <TextBlock Text="{Binding Message}" TextWrapping="Wrap"
-                   Foreground="{Binding IsError, Converter={x:Static v:BoolToBrushConverter.Instance}}" />
-      </StackPanel>
-    </Border>
+      </Border>
+      <Border Classes="status-warn" IsVisible="{Binding !Paired}">
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <Path Data="{StaticResource Icon.Warning}" Width="26" Height="26"
+                Stretch="Uniform" Fill="{StaticResource App.Amber.Brush}" VerticalAlignment="Top"/>
+          <StackPanel Spacing="4">
+            <TextBlock Text="Estado del emparejamiento" FontWeight="Bold" Foreground="{StaticResource App.Amber.Brush}"/>
+            <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" Foreground="{StaticResource App.Amber.Brush}"/>
+            <TextBlock Classes="hint" Opacity="0.8"
+                       Text="El token de acceso se guarda CIFRADO en el equipo (DPAPI) y jamás se muestra en pantalla."/>
+          </StackPanel>
+        </StackPanel>
+      </Border>
 
-    <!-- Desemparejar: confirmación previa; equivale a revocar desde el panel. -->
-    <Border Padding="12" CornerRadius="4" Background="#FFF8F8">
-      <StackPanel Spacing="8">
-        <TextBlock Text="Desemparejar" FontWeight="Bold" FontSize="15" />
-        <TextBlock Text="El agente deja de recibir pedidos y borra URL, token y local de este equipo. El administrador deberá revocar (o confirmar la baja) desde el panel." TextWrapping="Wrap" />
-        <Button Content="Desemparejar este equipo…" Click="OnUnpairClick" IsEnabled="{Binding Paired}" />
-      </StackPanel>
-    </Border>
-  </StackPanel>
+      <!-- Flujo: pegar la URL + el código de 6 dígitos → pair → confirmación con el local. -->
+      <Border Classes="card">
+        <StackPanel Spacing="10">
+          <TextBlock Classes="card-title" Text="Emparejar con la tienda"/>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Border Width="22" Height="22" CornerRadius="11" Background="{StaticResource App.Primary.Brush}">
+              <TextBlock Text="1" Foreground="White" FontWeight="Bold" FontSize="12"
+                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <TextBlock Text="En el panel de Orvita Print (WordPress), genera un código de emparejamiento."
+                       VerticalAlignment="Center" TextWrapping="Wrap"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Border Width="22" Height="22" CornerRadius="11" Background="{StaticResource App.Primary.Brush}">
+              <TextBlock Text="2" Foreground="White" FontWeight="Bold" FontSize="12"
+                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <TextBlock Text="Pega aquí la URL de tu tienda y el código de 6 dígitos:"
+                       VerticalAlignment="Center" TextWrapping="Wrap"/>
+          </StackPanel>
+          <TextBox Text="{Binding ServerUrlInput}" Watermark="https://tu-tienda.es/wp-json/orp-print/v1"/>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBox Text="{Binding CodeInput}" Watermark="482913" MaxLength="6" Width="140"/>
+            <Button Classes="primary" Click="OnPairClick" IsEnabled="{Binding !IsBusy}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Path Data="{StaticResource Icon.Link}" Width="15" Height="15" Stretch="Uniform" Fill="White"/>
+                <TextBlock Text="Emparejar"/>
+              </StackPanel>
+            </Button>
+            <ProgressBar IsIndeterminate="True" Width="90" Height="6" IsVisible="{Binding IsBusy}" VerticalAlignment="Center"/>
+          </StackPanel>
+          <CheckBox Content="Permitir HTTP sin cifrar (SOLO desarrollo, p. ej. wp-env)"
+                    IsChecked="{Binding AllowInsecureHttp}"/>
+          <TextBlock Text="{Binding Message}" TextWrapping="Wrap"
+                     Foreground="{Binding IsError, Converter={x:Static v:BoolToBrushConverter.Instance}}"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Desemparejar: doble confirmación en la vista; usa pair.remove. Queda como paso
+           del administrador revocar (o confirmar la baja) desde el panel. -->
+      <Border Classes="status-danger">
+        <StackPanel Spacing="8">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <Path Data="{StaticResource Icon.Warning}" Width="22" Height="22"
+                  Stretch="Uniform" Fill="{StaticResource App.Amber.Brush}" VerticalAlignment="Center"/>
+            <TextBlock Text="Desemparejar" FontWeight="Bold" FontSize="15"
+                       Foreground="{StaticResource App.Navy.Brush}" VerticalAlignment="Center"/>
+          </StackPanel>
+          <TextBlock Classes="hint"
+                     Text="El agente deja de recibir pedidos y borra URL, token y local de este equipo. El administrador deberá revocar (o confirmar la baja) desde el panel."/>
+          <Button Classes="danger" Click="OnUnpairClick" IsEnabled="{Binding Paired}"
+                  Content="Desemparejar este equipo…" HorizontalAlignment="Left"/>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
 </UserControl>

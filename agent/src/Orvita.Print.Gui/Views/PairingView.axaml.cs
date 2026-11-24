@@ -20,11 +20,35 @@ public partial class PairingView : UserControl
         };
     }
 
+    /// <summary>
+    /// DOBLE confirmación del desemparejado (GUI-09): primero el aviso de qué borra la
+    /// operación y luego una segunda pregunta «definitiva». Ambas cancelables; la lógica
+    /// del VM (pair.remove) no cambia.
+    /// </summary>
     private async Task<bool> ConfirmUnpairAsync(string message)
+    {
+        var first = await ShowConfirmDialogAsync(
+            "Desemparejar",
+            message,
+            yesLabel: "Desemparejar");
+        if (!first)
+        {
+            return false;
+        }
+
+        return await ShowConfirmDialogAsync(
+            "Desemparejar · confirmación final",
+            "Esta acción es definitiva desde este equipo: el agente deja de imprimir los pedidos de la " +
+            "tienda y el administrador deberá revocar el token en el panel de Orvita Print. ¿Seguro que " +
+            "quieres continuar?",
+            yesLabel: "Sí, desemparejar");
+    }
+
+    private async Task<bool> ShowConfirmDialogAsync(string title, string message, string yesLabel)
     {
         var dialog = new Window
         {
-            Title = "Desemparejar",
+            Title = title,
             SizeToContent = SizeToContent.WidthAndHeight,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             CanResize = false,
@@ -46,8 +70,8 @@ public partial class PairingView : UserControl
             HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
         };
         var result = false;
-        var yes = new Button { Content = "Desemparejar" };
-        var no = new Button { Content = "Cancelar" };
+        var yes = new Button { Content = yesLabel, Classes = { "danger" } };
+        var no = new Button { Content = "Cancelar", Classes = { "secondary" } };
         yes.Click += (_, _) => { result = true; dialog.Close(); };
         no.Click += (_, _) => dialog.Close();
         buttons.Children.Add(yes);
