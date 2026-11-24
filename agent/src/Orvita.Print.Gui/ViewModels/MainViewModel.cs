@@ -25,10 +25,17 @@ public partial class MainViewModel : ObservableObject
     private readonly NotificationDetector _notifications = new();
     private readonly IPreferenceStore _preferences;
 
+    /// <summary>Preferencias locales de la GUI en fichero JSON propio (%LocalAppData%\OrvitaPrint\gui.json).</summary>
+    private readonly IPreferenceStore _localPreferences;
+
     private StatusSnapshot? _status;
 
     [ObservableProperty]
     private bool _serviceDown = true;
+
+    /// <summary>Punto de la barra de estado: verde solo con conexión buena (GUI-09).</summary>
+    [ObservableProperty]
+    private bool _isConnected;
 
     [ObservableProperty]
     private TrayState _trayState = TrayState.ServiceDown;
@@ -53,24 +60,38 @@ public partial class MainViewModel : ObservableObject
 
     public DiagnosticsViewModel Diagnostics { get; }
 
+    /// <summary>Pestaña «Configuración» (GUI-09): preferencias de la GUI + rutas del servicio.</summary>
+    public SettingsViewModel Settings { get; }
+
+    /// <summary>Pestaña «Acerca de» (GUI-09): versiones y datos del producto (solo lectura).</summary>
+    public AboutViewModel About { get; }
+
     /// <summary>Instantánea vigente de status (la reutilizan las pestañas).</summary>
     public StatusSnapshot? Status => _status;
 
     /// <summary>La vista muestra el balón en el tray; el VM no conoce Windows.</summary>
     public event Action<TrayBalloon>? BalloonRequested;
 
-    public MainViewModel(IManagementClient client, IPreferenceStore preferences)
+    /// <summary>
+    /// Ctor con dos almacenes: <paramref name="preferences"/> (registro HKCU, arranque con
+    /// Windows) y <paramref name="localPreferences"/> (gui.json, notificaciones). Si no se
+    /// pasa el local, se usa el mismo almacén (comportamiento anterior: pruebas).
+    /// </summary>
+    public MainViewModel(IManagementClient client, IPreferenceStore preferences, IPreferenceStore? localPreferences = null)
     {
         _client = client;
         _preferences = preferences;
+        _localPreferences = localPreferences ?? preferences;
 
-        _notifySuccess = preferences.GetBool("NotifySuccess", fallback: false);
+        _notifySuccess = _localPreferences.GetBool("NotifySuccess", fallback: false);
         _autoStart = WindowsAutoStart.IsEnabled();
 
         Queue = new QueueViewModel(client);
         Destinations = new DestinationsViewModel(client);
         Pairing = new PairingViewModel(client);
         Diagnostics = new DiagnosticsViewModel(client);
+        Settings = new SettingsViewModel(client);
+        About = new AboutViewModel();
     }
 
     /// <summary>
@@ -87,6 +108,7 @@ public partial class MainViewModel : ObservableObject
         catch (Exception ex) when (IsPipeFault(ex))
         {
             ServiceDown = true;
+            IsConnected = false;
             ApplyTray(null);
             return null;
         }
@@ -103,6 +125,7 @@ public partial class MainViewModel : ObservableObject
 
         // Reparte la instantánea a las pestañas que la enriquecen.
         Pairing.ApplyStatus(snapshot);
+        About.ApplyStatus(snapshot);
 
         ApplyTray(snapshot);
         var balloon = _notifications.Consume(snapshot, NotifySuccess);
@@ -143,7 +166,7 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    partial void OnNotifySuccessChanged(bool value) => _preferences.SetBool("NotifySuccess", value);
+    partial void OnNotifySuccessChanged(bool value) => _localPreferences.SetBool("NotifySuccess", value);
 
     partial void OnAutoStartChanged(bool value)
     {
@@ -175,9 +198,14 @@ public partial class MainViewModel : ObservableObject
         TrayState = state;
         TrayTooltip = tooltip;
         StatusBarText = StatusBarLine(snapshot, state);
+        // Punto de la barra de estado (GUI-09): verde SOLO con el servicio emparejado y el
+        // poller corriendo; rojo en cualquier otro caso (caído, sin emparejar, sin conexión,
+        // con incidencia abierta).
+        IsConnected = state == TrayState.Running;
     }
 
-    /// <summary>Barra de estado de la ventana (Doc/08 §4.6: «una sola barra de estado»).</summary>
+    /// <summary>Barra de estado de la ventana (Doc/08 §4.6: «una sola barra de estado»). Con
+    /// conexión buena añade la hora de la última respuesta de la tienda (GUI-09).</summary>
     private static string StatusBarLine(StatusSnapshot? status, TrayState state) => state switch
     {
         TrayState.ServiceDown => "El servicio Orvita Print no está en ejecución",
@@ -186,7 +214,8 @@ public partial class MainViewModel : ObservableObject
         TrayState.NoConnection => "Sin conexión con la tienda; reintentando",
         _ => status is null
             ? "Emparejado: imprimiendo normalmente"
-            : $"Emparejado con «{status.LocationName ?? status.LocationCode ?? status.ServerUrl}» · pendientes: {status.PendingLocal} · impresas: {status.JobsDone} · errores: {status.JobsError}",
+            : $"Emparejado con «{status.LocationName ?? status.LocationCode ?? status.ServerUrl}» · pendientes: {status.PendingLocal} · impresas: {status.JobsDone} · errores: {status.JobsError}"
+              + (status.LastSeenByServer is { } seen ? $" · última respuesta {seen.ToLocalTime():HH:mm}" : string.Empty),
     };
 
     internal static bool IsPipeFault(Exception ex) =>

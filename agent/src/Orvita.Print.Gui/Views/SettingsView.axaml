@@ -1,0 +1,74 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Orvita.Print.Gui.ViewModels"
+        xmlns:v="using:Orvita.Print.Gui.Views"
+        x:Class="Orvita.Print.Gui.Views.SettingsView"
+        x:DataType="vm:MainViewModel">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel MaxWidth="660" HorizontalAlignment="Left">
+
+      <!-- Cabecera (GUI-09): tile azul con el icono de engranaje. -->
+      <v:PageHeader Icon="{StaticResource Icon.Gear}"
+                    Title="Configuración"
+                    Subtitle="Preferencias de esta aplicación (el servicio se configura aparte)"/>
+
+      <!-- Arranque: HKCU Run de la GUI (misma lógica de siempre, ahora con su pestaña). -->
+      <Border Classes="card">
+        <StackPanel Spacing="6">
+          <TextBlock Classes="card-title" Text="Arranque"/>
+          <CheckBox Content="Iniciar la GUI con Windows" IsChecked="{Binding AutoStart}"/>
+          <TextBlock Classes="hint"
+                     Text="Si lo activas, esta ventana de bandeja se abre al iniciar tu sesión de Windows. El servicio Orvita Print se instala aparte y siempre arranca con el equipo."/>
+        </StackPanel>
+      </Border>
+
+      <!-- Notificaciones: la preferencia vive en %LocalAppData%\OrvitaPrint\gui.json. -->
+      <Border Classes="card">
+        <StackPanel Spacing="6">
+          <TextBlock Classes="card-title" Text="Notificaciones"/>
+          <CheckBox Content="Mostrar aviso al imprimir cada trabajo" IsChecked="{Binding NotifySuccess}"/>
+          <TextBlock Classes="hint"
+                     Text="Desmarcado = modo discreto: solo verás avisos cuando un trabajo falle o haya una incidencia. La preferencia se guarda en este equipo, en %LocalAppData%\OrvitaPrint\gui.json."/>
+        </StackPanel>
+      </Border>
+
+      <!-- Información del servicio (solo lectura, pedida por la pipe vía doctor). -->
+      <Border Classes="card">
+        <StackPanel Spacing="8">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Classes="card-title" Text="Información del servicio (solo lectura)"/>
+            <Button Grid.Column="1" Classes="secondary" Command="{Binding Settings.RefreshCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Path Data="{StaticResource Icon.Refresh}" Width="13" Height="13"
+                      Stretch="Uniform" Fill="{StaticResource App.Navy.Brush}"/>
+                <TextBlock Text="Actualizar"/>
+              </StackPanel>
+            </Button>
+          </Grid>
+          <Border Classes="banner-danger" Margin="0"
+                  IsVisible="{Binding Settings.LoadError, Converter={x:Static v:NotNullConverter.Instance}}">
+            <TextBlock Text="{Binding Settings.LoadError}" Foreground="{StaticResource App.Red.Brush}" TextWrapping="Wrap"/>
+          </Border>
+          <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <TextBlock Grid.Row="0" Grid.Column="0" Classes="field-label" Text="Versión del servicio:"/>
+            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Settings.ServiceVersion}"
+                       Foreground="{StaticResource App.Navy.Brush}" TextTrimming="CharacterEllipsis"/>
+            <TextBlock Grid.Row="1" Grid.Column="0" Classes="field-label" Text="Carpeta de datos:" Margin="0,4,0,0"/>
+            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Settings.DataDirectory}"
+                       Foreground="{StaticResource App.Navy.Brush}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
+            <TextBlock Grid.Row="2" Grid.Column="0" Classes="field-label" Text="Registros:" Margin="0,4,0,0"/>
+            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Settings.LogDirectory}"
+                       Foreground="{StaticResource App.Navy.Brush}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
+          </Grid>
+          <TextBlock Classes="hint"
+                     Text="Estas rutas las informa el servicio por su pipe de gestión: la GUI nunca abre la base de datos ni los ficheros de configuración del servicio."/>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

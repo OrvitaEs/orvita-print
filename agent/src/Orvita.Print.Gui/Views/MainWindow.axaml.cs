@@ -64,6 +64,16 @@ public partial class MainWindow : Window
                 _viewModel.Queue.Refresh();
             }
         };
+
+        // Pestaña Configuración (GUI-09): el doctor se pide por la pipe SOLO al abrir la
+        // pestaña por primera vez (carga perezosa: nada de doctor cada 5 s).
+        Tabs.SelectionChanged += (_, _) =>
+        {
+            if (Tabs.SelectedIndex == 4)
+            {
+                _viewModel.Settings.EnsureLoaded();
+            }
+        };
     }
 
     internal MainViewModel ViewModel => _viewModel;
@@ -74,7 +84,12 @@ public partial class MainWindow : Window
         // GUI-07: auto-arranque con la sesión del usuario, activado por defecto SOLO en el
         // primer arranque (el MSI per-máquina no puede escribir el HKCU de cada usuario).
         WindowsAutoStart.ApplyFirstRunDefault(preferences);
-        return new MainViewModel(new ManagementGuiClient(), preferences);
+        // GUI-09: la preferencia de notificaciones vive en el JSON PROPIO de la GUI
+        // (%LocalAppData%\OrvitaPrint\gui.json); el registro queda para el auto-arranque.
+        return new MainViewModel(
+            new ManagementGuiClient(),
+            preferences,
+            new GuiJsonPreferenceStore());
     }
 
     protected override void OnOpened(EventArgs e)

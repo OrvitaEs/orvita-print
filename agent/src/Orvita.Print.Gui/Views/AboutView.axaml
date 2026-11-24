@@ -1,0 +1,43 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Orvita.Print.Gui.ViewModels"
+        xmlns:v="using:Orvita.Print.Gui.Views"
+        x:Class="Orvita.Print.Gui.Views.AboutView"
+        x:DataType="vm:MainViewModel">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel MaxWidth="660" HorizontalAlignment="Left">
+
+      <!-- Cabecera (GUI-09): tile azul con el icono de info. -->
+      <v:PageHeader Icon="{StaticResource Icon.Info}"
+                    Title="Acerca de"
+                    Subtitle="Orvita Print · impresión automática para WooCommerce"/>
+
+      <Border Classes="card">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Orvita Print" FontSize="22" FontWeight="Bold"
+                     Foreground="{StaticResource App.Navy.Brush}"/>
+          <StackPanel Orientation="Horizontal" Spacing="16">
+            <TextBlock Text="{Binding About.GuiVersion, StringFormat='Versión de la GUI: {0}'}"
+                       Foreground="{StaticResource App.Gray.Brush}"/>
+            <TextBlock Text="{Binding About.ServiceVersion, StringFormat='Versión del servicio: {0}'}"
+                       Foreground="{StaticResource App.Gray.Brush}"/>
+          </StackPanel>
+          <TextBlock Text="{x:Static vm:AboutViewModel.ProductText}" TextWrapping="Wrap"
+                     Foreground="{StaticResource App.Navy.Brush}"/>
+          <TextBlock Text="{x:Static vm:AboutViewModel.SupportLine}" TextWrapping="Wrap"
+                     Foreground="{StaticResource App.Navy.Brush}" FontWeight="Medium"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Privacidad/regla de hierro en una nota informativa (guía al profesional). -->
+      <Border Classes="banner-info">
+        <StackPanel Orientation="Horizontal" Spacing="10">
+          <Path Data="{StaticResource Icon.Info}" Width="18" Height="18" Stretch="Uniform"
+                Fill="{StaticResource App.Primary.Brush}" VerticalAlignment="Top"/>
+          <TextBlock Foreground="{StaticResource App.Navy.Brush}" TextWrapping="Wrap" FontSize="12"
+                     Text="Toda operación de esta ventana viaja por la pipe de gestión del servicio: la GUI nunca abre la base de datos ni ve el token (va cifrado con DPAPI en el equipo)."/>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

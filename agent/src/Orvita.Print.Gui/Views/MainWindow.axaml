@@ -45,6 +45,12 @@
       <TabItem Header="Diagnóstico" Tag="{StaticResource Icon.Pulse}">
         <v:DiagnosticsView DataContext="{Binding Diagnostics}"/>
       </TabItem>
+      <TabItem Header="Configuración" Tag="{StaticResource Icon.Gear}">
+        <v:SettingsView/>
+      </TabItem>
+      <TabItem Header="Acerca de" Tag="{StaticResource Icon.Info}">
+        <v:AboutView/>
+      </TabItem>
     </TabControl>
   </DockPanel>
 </Window>
