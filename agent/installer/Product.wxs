@@ -103,10 +103,17 @@
         <Component Id="DataFolderPermissions" Permanent="no">
           <CreateFolder>
             <!-- S-01: el servicio (LocalSystem) lee/escribe; Administradores gestionan; los
-                 usuarios normales SOLO pueden leer (no tocar el token ni la cola). -->
-            <Permission User="SYSTEM" GenericAll="yes" />
-            <Permission User="Administrators" GenericAll="yes" />
-            <Permission User="Users" GenericRead="yes" GenericExecute="yes" />
+                 usuarios normales SOLO pueden leer (no tocar el token ni la cola).
+                 ACL vía PermissionEx (SDDL en la tabla MsiLockPermissionsEx, aplicada por
+                 MSI 5.0) con SIDs well-known: SY=SYSTEM, BA=Administradores, BU=BUILTIN\Users.
+                 NO con nombres de cuenta («Permission User=…» → LockPermissions): Windows
+                 Installer resuelve los nombres con LookupAccountName, que en Windows en
+                 español exige «Usuarios» (y falla igual en dominios) → error 1926 «Users no
+                 es un usuario o grupo válido». Los SIDs son iguales en cualquier idioma.
+                 D:P = DACL protegida: no hereda los bits de escritura «solo en esta carpeta»
+                 que ProgramData concede a los usuarios para crear sus propios ficheros. -->
+            <PermissionEx
+                Sddl="D:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FRFX;;;BU)" />
           </CreateFolder>
           <!-- Componente sin ficheros: el directorio se borra en desinstalación SOLO si quedó
                vacío; con outbox.db/license.dat/logs se conserva (reinstalar no re-empareja). -->

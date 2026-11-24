@@ -32,8 +32,8 @@ Invoke-Msi "SELECT * FROM ``ServiceControl``"
 Write-Host "== Environment =="
 Invoke-Msi "SELECT * FROM ``Environment``"
 
-Write-Host "== LockPermissions =="
-Invoke-Msi "SELECT * FROM ``LockPermissions``"
+Write-Host "== MsiLockPermissionsEx (ACL de los datos, S-01) =="
+Invoke-Msi "SELECT * FROM ``MsiLockPermissionsEx``"
 
 Write-Host "== Upgrade =="
 Invoke-Msi "SELECT * FROM ``Upgrade``"
