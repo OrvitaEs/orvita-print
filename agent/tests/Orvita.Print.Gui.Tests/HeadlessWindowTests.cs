@@ -43,7 +43,9 @@ public sealed class HeadlessWindowTests
             .OfType<Avalonia.Controls.TabItem>()
             .Select(tab => (string)tab.Header!)
             .ToList();
-        Assert.Equal(new[] { "Cola", "Salidas", "Emparejamiento", "Diagnóstico" }, tabNames);
+        Assert.Equal(
+            new[] { "Cola", "Salidas", "Emparejamiento", "Diagnóstico", "Configuración", "Acerca de" },
+            tabNames);
 
         // La barra de estado existe (punto + texto) y arranca consultando.
         Assert.NotNull(window.FindControl<Avalonia.Controls.TextBlock>("StatusBar"));
@@ -80,7 +82,33 @@ public sealed class HeadlessWindowTests
 
         Assert.False(vm.ServiceDown);
         Assert.Equal(TrayState.Running, vm.TrayState);
+        Assert.True(vm.IsConnected);
         Assert.Contains("Cafetería Centro", vm.StatusBarText);
+        Assert.Contains("última respuesta", vm.StatusBarText);
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void Al_abrir_configuracion_se_pide_el_doctor_una_vez_por_la_pipe()
+    {
+        var client = new FakeManagementClient();
+        client.RespondOk(ManagementProtocol.Operations.Doctor, new
+        {
+            version = "1.0.0-dev",
+            data_directory = @"C:\ProgramData\OrvitaPrint",
+            log_directory = @"C:\ProgramData\OrvitaPrint\logs",
+        });
+        var vm = new Orvita.Print.Gui.ViewModels.MainViewModel(
+            client,
+            new Orvita.Print.Gui.Preferences.InMemoryPreferenceStore());
+        var window = new MainWindow(vm, enableTray: false);
+        window.Show();
+
+        window.FindControl<Avalonia.Controls.TabControl>("Tabs")!.SelectedIndex = 4;
+        window.FindControl<Avalonia.Controls.TabControl>("Tabs")!.SelectedIndex = 4; // segunda vez: sin nueva llamada
+
+        Assert.Equal(1, client.Requests.Count(r => r.Op == ManagementProtocol.Operations.Doctor));
+        Assert.Equal("1.0.0-dev", vm.Settings.ServiceVersion);
         window.Close();
     }
 }
