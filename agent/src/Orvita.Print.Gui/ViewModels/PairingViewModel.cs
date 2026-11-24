@@ -132,12 +132,13 @@ public partial class PairingViewModel : ObservableObject
                 {
                     server = url.ToString(),
                     code,
+                    allow_insecure_http = AllowInsecureHttp,
                 })).ConfigureAwait(true);
 
             if (!response.Ok || response.Data is not { ValueKind: JsonValueKind.Object } data)
             {
                 IsError = true;
-                Message = response.Error ?? "El emparejamiento falló.";
+                Message = GuiFriendlyPairError(response.Error) ?? "El emparejamiento falló.";
                 return;
             }
 
@@ -159,6 +160,20 @@ public partial class PairingViewModel : ObservableObject
             IsBusy = false;
         }
     }
+
+    /// <summary>
+    /// El error S-03 del servicio habla de la bandera del CLI («--allow-insecure-http»), que
+    /// en la GUI no existe: ahí la bandera de desarrollo ES la casilla «Permitir HTTP sin
+    /// cifrar». Se reescribe SOLO ese mensaje; el resto de errores del servicio pasan tal
+    /// cual (Doc/04: los códigos contractuales no se traducen, este es solo texto de ayuda).
+    /// </summary>
+    public static string? GuiFriendlyPairError(string? error) =>
+        error is null
+            ? null
+            : error.Contains("--allow-insecure-http")
+                ? "La URL del servidor debe usar HTTPS (S-03). Solo se permite HTTP en desarrollo: " +
+                  "marca la casilla «Permitir HTTP sin cifrar» para emparejar con http://."
+                : error;
 
     /// <summary>Desempareja (op pair.remove, GUI-05): para el poller y borra URL+token+local.</summary>
     public async Task UnpairAsync()

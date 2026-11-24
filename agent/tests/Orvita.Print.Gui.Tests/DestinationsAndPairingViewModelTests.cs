@@ -222,10 +222,61 @@ public sealed class DestinationsAndPairingViewModelTests
         Assert.Equal(ManagementProtocol.Operations.Pair, op);
         Assert.Equal("https://tienda.example/v1/", args!.Value.GetProperty("server").GetString());
         Assert.Equal("482913", args.Value.GetProperty("code").GetString());
+        Assert.False(args.Value.GetProperty("allow_insecure_http").GetBoolean()); // sin casilla: false explícito
         Assert.False(vm.IsError);
         Assert.Contains("Cafetería Centro", vm.Message);
         Assert.True(vm.Paired);
         Assert.Null(vm.CodeInput); // el código no queda pegado en el formulario
+    }
+
+    [Fact]
+    public async Task Pair_con_casilla_http_manda_allow_insecure_http_true_y_empareja_GUI14()
+    {
+        _client.RespondOk(ManagementProtocol.Operations.Pair, new
+        {
+            server_url = "http://localhost:8888/wp-json/orp-print/v1/",
+            location = new { id = 4L, code = "DEMO", name = "Local Demo" },
+            poll_interval = 10,
+        });
+        var vm = new PairingViewModel(_client)
+        {
+            ServerUrlInput = "http://localhost:8888/wp-json/orp-print/v1",
+            CodeInput = "482913",
+            AllowInsecureHttp = true, // la casilla ES la bandera de desarrollo en la GUI
+        };
+
+        await vm.PairAsync();
+
+        // GUI-14: la casilla viaja por la pipe — el servicio NO la recibe como false.
+        var (op, args) = Assert.Single(_client.Requests);
+        Assert.Equal(ManagementProtocol.Operations.Pair, op);
+        Assert.Equal("http://localhost:8888/wp-json/orp-print/v1/", args!.Value.GetProperty("server").GetString());
+        Assert.True(args.Value.GetProperty("allow_insecure_http").GetBoolean());
+        Assert.False(vm.IsError);
+        Assert.Contains("Local Demo", vm.Message);
+        Assert.True(vm.Paired);
+    }
+
+    [Fact]
+    public void El_error_S03_del_servicio_se_reescribe_para_la_GUI_sin_bandera_del_cli()
+    {
+        // El servicio rechaza con el texto del CLI (p. ej. si un cliente de la pipe manda
+        // http sin la bandera); la GUI lo muestra pero SIN la bandera que no aplica aquí.
+        var mensaje = PairingViewModel.GuiFriendlyPairError(
+            "La URL del servidor debe usar HTTPS (S-03, Doc/03 §8). Solo se permite HTTP en desarrollo " +
+            "con la bandera explícita --allow-insecure-http (p. ej. wp-env). (Parameter 'serverUrl')");
+
+        Assert.NotNull(mensaje);
+        Assert.DoesNotContain("--allow-insecure-http", mensaje); // la bandera del CLI no aplica en GUI
+        Assert.Contains("casilla", mensaje);
+        Assert.Contains("HTTP sin cifrar", mensaje);
+    }
+
+    [Fact]
+    public void Los_otros_errores_del_servicio_pasan_sin_reescribir()
+    {
+        Assert.Null(PairingViewModel.GuiFriendlyPairError(null));
+        Assert.Equal("El código no existe o caducó.", PairingViewModel.GuiFriendlyPairError("El código no existe o caducó."));
     }
 
     [Fact]

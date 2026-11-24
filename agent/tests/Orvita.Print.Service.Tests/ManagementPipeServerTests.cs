@@ -141,6 +141,56 @@ public sealed class ManagementPipeServerTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Pair_http_con_allow_insecure_http_true_empareja_por_la_pipe_GUI14()
+    {
+        using var client = new TestPipeClient(_pipeName);
+        client.Connect();
+
+        var response = client.Request(new ManagementRequest
+        {
+            Id = 6,
+            Op = ManagementProtocol.Operations.Pair,
+            Args = JsonSerializer.SerializeToElement(new
+            {
+                server = "http://localhost:8888/wp-json/orp-print/v1",
+                code = "482913",
+                allow_insecure_http = true, // lo que la GUI manda con la casilla marcada
+            }, ManagementProtocol.Options),
+        });
+
+        Assert.True(response.Ok, $"pair http por pipe falló: {response.Error}");
+        Assert.Equal("Pizzería Río Rosso", response.Data!.Value.GetProperty("location").GetProperty("name").GetString());
+        Assert.Equal("http://localhost:8888/wp-json/orp-print/v1/", response.Data.Value.GetProperty("server_url").GetString());
+        Assert.True(_store.GetPairing().IsPaired);
+
+        await _poller.StopAsync();
+    }
+
+    [Fact]
+    public async Task Pair_http_sin_bandera_rechaza_con_el_error_S03_GUI14()
+    {
+        using var client = new TestPipeClient(_pipeName);
+        client.Connect();
+
+        var response = client.Request(new ManagementRequest
+        {
+            Id = 7,
+            Op = ManagementProtocol.Operations.Pair,
+            Args = JsonSerializer.SerializeToElement(new
+            {
+                server = "http://localhost:8888/wp-json/orp-print/v1",
+                code = "482913",
+                allow_insecure_http = false, // lo que la GUI mandaba ANTES del fix (campo ausente)
+            }, ManagementProtocol.Options),
+        });
+
+        Assert.False(response.Ok);
+        Assert.Contains("HTTPS (S-03", response.Error);
+        Assert.False(_store.GetPairing().IsPaired); // nada se guardó
+        Assert.Null(_connection.Transport);
+    }
+
+    [Fact]
     public async Task Varias_solicitudes_en_una_conexion_y_operacion_desconocida()
     {
         using var client = new TestPipeClient(_pipeName);
