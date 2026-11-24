@@ -45,7 +45,7 @@ public sealed class QueueJobRow
     /// <summary>«Reimprimir» en la fila: trabajos en error y también en done (reimprimir copia).</summary>
     public bool ShowRetry => State is "error" or "done";
 
-    /// <summary>«Marcar como revisada» SOLO en filas con error sin revisar (GUI-15).</summary>
+    /// <summary>«Revisar» SOLO en filas con error sin revisar (GUI-15; etiqueta corta GUI-16).</summary>
     public bool ShowReview => State == "error" && ReviewedAt is null;
 
     /// <summary>Nº de pedido tal cual se busca («por nº de pedido»); vacío si el servidor no lo mandó.</summary>
@@ -73,11 +73,14 @@ public sealed class QueueJobRow
     };
 }
 
-/// <summary>Etiqueta y color de los cinco estados locales (Doc/08 §4.2) — puro y testeable.</summary>
+/// <summary>Etiqueta y color de los cinco estados locales (Doc/08 §4.2) — puro y testeable.
+/// Etiqueta del duplicado corta («Reimpreso», GUI-16: el badge debe caber en la columna
+/// Estado al ancho mínimo de ventana); el contexto «tras corte» lo dan «Último error» y el
+/// panel de detalle.</summary>
 public static class QueueStatusMapper
 {
     public static string Label(string state, bool duplicate, bool reviewed = false) => duplicate
-        ? "Reimpreso tras corte"
+        ? "Reimpreso"
         : (state, reviewed) switch
         {
             ("error", true) => "Error · revisado",

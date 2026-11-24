@@ -150,6 +150,13 @@
       <Setter Property="Foreground" Value="{StaticResource App.Primary.Hover.Brush}"/>
     </Style>
 
+    <!-- Botón secundario SOLO-ICONO (GUI-16) para las acciones de la tabla de Cola: relleno
+         compacto (6 px) porque la celda es estrecha; el sentido lo da el ToolTip.Tip. -->
+    <Style Selector="Button.icon-action">
+      <Setter Property="Padding" Value="6,6"/>
+      <Setter Property="MinWidth" Value="26"/>
+    </Style>
+
     <!-- Botón con borde rojo (acciones destructivas: «Marcar vistos», «Desemparejar»). -->
     <Style Selector="Button.danger">
       <Setter Property="Background" Value="White"/>

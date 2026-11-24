@@ -33,11 +33,13 @@ public sealed class QueueModelTests
     }
 
     [Fact]
-    public void La_marca_duplicate_suspected_se_muestra_como_reimpreso_tras_corte()
+    public void La_marca_duplicate_suspected_se_muestra_como_reimpreso()
     {
         // Es un BADGE sobre el estado (Doc/08 §4.2): gana sobre el estado subyacente.
-        Assert.Equal("Reimpreso tras corte", QueueStatusMapper.Label("received", duplicate: true));
-        Assert.Equal("Reimpreso tras corte", QueueStatusMapper.Label("done", duplicate: true));
+        // GUI-16: etiqueta corta para que el badge quepa en la columna Estado al ancho
+        // mínimo de ventana; el contexto completo lo dan «Último error» y el detalle.
+        Assert.Equal("Reimpreso", QueueStatusMapper.Label("received", duplicate: true));
+        Assert.Equal("Reimpreso", QueueStatusMapper.Label("done", duplicate: true));
         // Color ámbar en ambos casos.
         Assert.Equal("#F9A825", QueueStatusMapper.Color("received", duplicate: true));
     }
