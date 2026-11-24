@@ -4,11 +4,13 @@
         xmlns:v="using:Orvita.Print.Gui.Views"
         x:Class="Orvita.Print.Gui.Views.DiagnosticsView"
         x:DataType="vm:DiagnosticsViewModel">
+  <!-- GUI-11 (responsive): el visor del log vive en la fila * (crece con la ventana hasta
+       llenar el alto disponible); MaxWidth 1000. -->
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <StackPanel MaxWidth="880">
+    <Grid MaxWidth="1000" RowDefinitions="Auto,Auto,Auto,Auto,*">
 
       <!-- Cabecera (GUI-09): tile azul con el icono de pulso + Actualizar (primario). -->
-      <v:PageHeader Icon="{StaticResource Icon.Pulse}"
+      <v:PageHeader Grid.Row="0" Icon="{StaticResource Icon.Pulse}"
                     Title="Diagnóstico"
                     Subtitle="Consulta el estado y las últimas líneas del registro">
         <v:PageHeader.Actions>
@@ -22,7 +24,7 @@
       </v:PageHeader>
 
       <!-- Fila de acciones con iconos: ZIP (descarga), carpeta, log (lista). -->
-      <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+      <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
         <Button Classes="secondary" Click="OnZipClick">
           <StackPanel Orientation="Horizontal" Spacing="6">
             <Path Data="{StaticResource Icon.Download}" Width="14" Height="14"
@@ -48,12 +50,12 @@
       </StackPanel>
 
       <!-- Error visible (sin servicio o fallo del doctor). -->
-      <Border Classes="banner-danger" IsVisible="{Binding Error, Converter={x:Static v:NotNullConverter.Instance}}">
+      <Border Grid.Row="2" Classes="banner-danger" IsVisible="{Binding Error, Converter={x:Static v:NotNullConverter.Instance}}">
         <TextBlock Text="{Binding Error}" Foreground="{StaticResource App.Red.Brush}" TextWrapping="Wrap"/>
       </Border>
 
       <!-- Resumen del doctor (§4.5: versiones, licencia, poller, cola) en tarjeta. -->
-      <Border Classes="card">
+      <Border Grid.Row="3" Classes="card">
         <StackPanel Spacing="6">
           <TextBlock Classes="card-title" Text="Resumen del diagnóstico"/>
           <TextBox Text="{Binding SummaryText}" IsReadOnly="True" TextWrapping="Wrap"
@@ -64,19 +66,19 @@
       </Border>
 
       <!-- Visor del log: el fichero lo lee la GUI (solo lectura); la ruta la dio la pipe.
-           El token y la BD NUNCA se leen ni se muestran (S-05). -->
-      <Border Classes="card">
-        <StackPanel Spacing="6">
-          <TextBlock Classes="card-title" Text="Últimas líneas del registro (solo lectura)"/>
-          <TextBlock Text="{Binding LogPath}" FontSize="12"
+           El token y la BD NUNCA se leen ni se muestran (S-05). GUI-11: llena la fila *. -->
+      <Border Grid.Row="4" Classes="card">
+        <Grid RowDefinitions="Auto,Auto,*">
+          <TextBlock Grid.Row="0" Classes="card-title" Text="Últimas líneas del registro (solo lectura)"/>
+          <TextBlock Grid.Row="1" Text="{Binding LogPath}" FontSize="12" Margin="0,4,0,6"
                      Foreground="{StaticResource App.Gray.Brush}" TextTrimming="CharacterEllipsis"/>
-          <TextBox Text="{Binding LogText}" IsReadOnly="True" TextWrapping="NoWrap" AcceptsReturn="True"
-                   Height="260" FontFamily="Consolas, 'Cascadia Mono', monospace" FontSize="12"
+          <TextBox Grid.Row="2" Text="{Binding LogText}" IsReadOnly="True" TextWrapping="NoWrap" AcceptsReturn="True"
+                   MinHeight="260" FontFamily="Consolas, 'Cascadia Mono', monospace" FontSize="12"
                    Background="#F7FAFD" BorderBrush="{StaticResource App.Card.Border}"
                    ScrollViewer.VerticalScrollBarVisibility="Auto"
                    ScrollViewer.HorizontalScrollBarVisibility="Auto"/>
-        </StackPanel>
+        </Grid>
       </Border>
-    </StackPanel>
+    </Grid>
   </ScrollViewer>
 </UserControl>

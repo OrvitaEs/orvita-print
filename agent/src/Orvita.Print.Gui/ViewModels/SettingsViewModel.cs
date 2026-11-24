@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Orvita.Print.Core;
 using Orvita.Print.Gui.Management;
+using Orvita.Print.Gui.Models;
 
 namespace Orvita.Print.Gui.ViewModels;
 
@@ -67,7 +68,8 @@ public partial class SettingsViewModel : ObservableObject
         _loaded = true;
         LoadError = null;
         var summary = DoctorSummary.FromJson(data);
-        ServiceVersion = summary.Version ?? "—";
+        // GUI-11: versión CORTA en pantalla (hash a 8 caracteres) para que no desborde.
+        ServiceVersion = VersionText.Shorten(summary.Version);
         DataDirectory = summary.DataDirectory ?? "—";
         LogDirectory = summary.LogDirectory ?? "—";
     }

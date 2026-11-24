@@ -33,12 +33,13 @@ public partial class AboutViewModel : ObservableObject
     private string _serviceVersion = "—";
 
     /// <summary>Enriquece la versión con la última instantánea de status. Si la pipe no
-    /// responde (status null) conserva la última conocida: «Acerca de» no parpadea.</summary>
+    /// responde (status null) conserva la última conocida: «Acerca de» no parpadea. En
+    /// pantalla la versión va CORTA (hash a 8 caracteres, GUI-11) para no desbordar.</summary>
     public void ApplyStatus(StatusSnapshot? status)
     {
         if (status?.Version is { Length: > 0 } version)
         {
-            ServiceVersion = version;
+            ServiceVersion = VersionText.Shorten(version);
         }
     }
 }

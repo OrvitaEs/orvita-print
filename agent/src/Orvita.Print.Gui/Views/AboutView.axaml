@@ -4,24 +4,27 @@
         xmlns:v="using:Orvita.Print.Gui.Views"
         x:Class="Orvita.Print.Gui.Views.AboutView"
         x:DataType="vm:MainViewModel">
+  <!-- GUI-11 (responsive): MaxWidth 720 para legibilidad, PERO centrado en el área
+       (HorizontalAlignment Stretch + MaxWidth: llena con ventana pequeña, se centra al
+       maximizar); TextWrapping en todos los TextBlock para que nada desborde la tarjeta. -->
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <StackPanel MaxWidth="660" HorizontalAlignment="Left">
+    <Grid MaxWidth="720" RowDefinitions="Auto,Auto,Auto">
 
       <!-- Cabecera (GUI-09): tile azul con el icono de info. -->
-      <v:PageHeader Icon="{StaticResource Icon.Info}"
+      <v:PageHeader Grid.Row="0" Icon="{StaticResource Icon.Info}"
                     Title="Acerca de"
                     Subtitle="Orvita Print · impresión automática para WooCommerce"/>
 
-      <Border Classes="card">
+      <Border Grid.Row="1" Classes="card">
         <StackPanel Spacing="8">
           <TextBlock Text="Orvita Print" FontSize="22" FontWeight="Bold"
                      Foreground="{StaticResource App.Navy.Brush}"/>
-          <StackPanel Orientation="Horizontal" Spacing="16">
-            <TextBlock Text="{Binding About.GuiVersion, StringFormat='Versión de la GUI: {0}'}"
-                       Foreground="{StaticResource App.Gray.Brush}"/>
-            <TextBlock Text="{Binding About.ServiceVersion, StringFormat='Versión del servicio: {0}'}"
-                       Foreground="{StaticResource App.Gray.Brush}"/>
-          </StackPanel>
+          <!-- GUI-11: versiones apiladas (antes en fila desbordaban la tarjeta con el hash
+               largo) y versión del servicio CORTA (hash truncado a 8 caracteres). -->
+          <TextBlock Text="{Binding About.GuiVersion, StringFormat='Versión de la GUI: {0}'}"
+                     Foreground="{StaticResource App.Gray.Brush}" TextWrapping="Wrap"/>
+          <TextBlock Text="{Binding About.ServiceVersion, StringFormat='Versión del servicio: {0}'}"
+                     Foreground="{StaticResource App.Gray.Brush}" TextWrapping="Wrap"/>
           <TextBlock Text="{x:Static vm:AboutViewModel.ProductText}" TextWrapping="Wrap"
                      Foreground="{StaticResource App.Navy.Brush}"/>
           <TextBlock Text="{x:Static vm:AboutViewModel.SupportLine}" TextWrapping="Wrap"
@@ -30,7 +33,7 @@
       </Border>
 
       <!-- Privacidad/regla de hierro en una nota informativa (guía al profesional). -->
-      <Border Classes="banner-info">
+      <Border Grid.Row="2" Classes="banner-info">
         <StackPanel Orientation="Horizontal" Spacing="10">
           <Path Data="{StaticResource Icon.Info}" Width="18" Height="18" Stretch="Uniform"
                 Fill="{StaticResource App.Primary.Brush}" VerticalAlignment="Top"/>
@@ -38,6 +41,6 @@
                      Text="Toda operación de esta ventana viaja por la pipe de gestión del servicio: la GUI nunca abre la base de datos ni ve el token (va cifrado con DPAPI en el equipo)."/>
         </StackPanel>
       </Border>
-    </StackPanel>
+    </Grid>
   </ScrollViewer>
 </UserControl>

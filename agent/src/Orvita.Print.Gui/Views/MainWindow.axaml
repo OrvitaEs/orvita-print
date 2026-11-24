@@ -18,13 +18,14 @@
 
   <DockPanel>
     <!-- Barra de estado (Doc/08 §4.6): punto verde/rojo + una sola línea de estado derivada
-         de status. Sin clic: la ventana no abre nada desde aquí. -->
+         de status. GUI-11: altura uniforme (una línea, sin ajuste de línea) y texto largo
+         truncado con «…» (TextTrimming); ClipToBounds para que nada asome por detrás. -->
     <Border DockPanel.Dock="Bottom" Background="White" BorderBrush="{StaticResource App.Card.Border}"
-            BorderThickness="0,1,0,0" Padding="16,9">
+            BorderThickness="0,1,0,0" Padding="16,9" ClipToBounds="True">
       <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
         <Ellipse x:Name="StatusDot" Width="10" Height="10" VerticalAlignment="Center"
                  Fill="{Binding IsConnected, Converter={x:Static v:ConnectionBrushConverter.Instance}}"/>
-        <TextBlock x:Name="StatusBar" Text="{Binding StatusBarText}" TextWrapping="Wrap"
+        <TextBlock x:Name="StatusBar" Text="{Binding StatusBarText}" TextTrimming="CharacterEllipsis"
                    FontSize="12" Foreground="{StaticResource App.Navy.Brush}"
                    VerticalAlignment="Center"/>
       </StackPanel>

@@ -4,16 +4,17 @@
         xmlns:v="using:Orvita.Print.Gui.Views"
         x:Class="Orvita.Print.Gui.Views.SettingsView"
         x:DataType="vm:MainViewModel">
+  <!-- GUI-11 (responsive): MaxWidth 720 y centrado en el área (Stretch + MaxWidth). -->
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <StackPanel MaxWidth="660" HorizontalAlignment="Left">
+    <Grid MaxWidth="720" RowDefinitions="Auto,Auto,Auto,Auto">
 
       <!-- Cabecera (GUI-09): tile azul con el icono de engranaje. -->
-      <v:PageHeader Icon="{StaticResource Icon.Gear}"
+      <v:PageHeader Grid.Row="0" Icon="{StaticResource Icon.Gear}"
                     Title="Configuración"
                     Subtitle="Preferencias de esta aplicación (el servicio se configura aparte)"/>
 
       <!-- Arranque: HKCU Run de la GUI (misma lógica de siempre, ahora con su pestaña). -->
-      <Border Classes="card">
+      <Border Grid.Row="1" Classes="card">
         <StackPanel Spacing="6">
           <TextBlock Classes="card-title" Text="Arranque"/>
           <CheckBox Content="Iniciar la GUI con Windows" IsChecked="{Binding AutoStart}"/>
@@ -23,7 +24,7 @@
       </Border>
 
       <!-- Notificaciones: la preferencia vive en %LocalAppData%\OrvitaPrint\gui.json. -->
-      <Border Classes="card">
+      <Border Grid.Row="2" Classes="card">
         <StackPanel Spacing="6">
           <TextBlock Classes="card-title" Text="Notificaciones"/>
           <CheckBox Content="Mostrar aviso al imprimir cada trabajo" IsChecked="{Binding NotifySuccess}"/>
@@ -33,7 +34,7 @@
       </Border>
 
       <!-- Información del servicio (solo lectura, pedida por la pipe vía doctor). -->
-      <Border Classes="card">
+      <Border Grid.Row="3" Classes="card">
         <StackPanel Spacing="8">
           <Grid ColumnDefinitions="*,Auto">
             <TextBlock Classes="card-title" Text="Información del servicio (solo lectura)"/>
@@ -50,14 +51,9 @@
             <TextBlock Text="{Binding Settings.LoadError}" Foreground="{StaticResource App.Red.Brush}" TextWrapping="Wrap"/>
           </Border>
           <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto">
-            <Grid.RowDefinitions>
-              <RowDefinition Height="Auto"/>
-              <RowDefinition Height="Auto"/>
-              <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
             <TextBlock Grid.Row="0" Grid.Column="0" Classes="field-label" Text="Versión del servicio:"/>
             <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Settings.ServiceVersion}"
-                       Foreground="{StaticResource App.Navy.Brush}" TextTrimming="CharacterEllipsis"/>
+                       Foreground="{StaticResource App.Navy.Brush}" TextWrapping="Wrap"/>
             <TextBlock Grid.Row="1" Grid.Column="0" Classes="field-label" Text="Carpeta de datos:" Margin="0,4,0,0"/>
             <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Settings.DataDirectory}"
                        Foreground="{StaticResource App.Navy.Brush}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
@@ -69,6 +65,6 @@
                      Text="Estas rutas las informa el servicio por su pipe de gestión: la GUI nunca abre la base de datos ni los ficheros de configuración del servicio."/>
         </StackPanel>
       </Border>
-    </StackPanel>
+    </Grid>
   </ScrollViewer>
 </UserControl>

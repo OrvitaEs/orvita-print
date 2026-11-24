@@ -8,17 +8,24 @@
     "agujeros" (exclamación, check, info…) usan la regla de relleno EvenOdd de defecto.
   -->
 
-  <!-- Impresora: bandeja superior + cuerpo con salida inferior. -->
-  <StreamGeometry x:Key="Icon.Printer">M7 4h10v4H7z M3 10h18v6h-4v4H7v-4H3z</StreamGeometry>
+  <!-- Impresora: bandeja superior + cuerpo con salida inferior. Caja de tinta CUADRADA
+       (18x18, centro 12,12): con Stretch=Uniform llena exactamente su Path (Avalonia alinea
+       la tinta arriba-izquierda dentro del control, GUI-11), así el icono queda idéntico en
+       la cabecera (24 px) y en las tarjetas (20 px). -->
+  <StreamGeometry x:Key="Icon.Printer">M7 3h10v5H7z M3 10h18v6h-4v5H7v-5H3z</StreamGeometry>
 
-  <!-- Lista: tres puntos + tres barras (Salidas). -->
-  <StreamGeometry x:Key="Icon.List">M4 6h2.5v2.5H4z M8.5 6H20v2.5H8.5z M4 10.75h2.5v2.5H4z M8.5 10.75H20v2.5H8.5z M4 15.5h2.5V18H4z M8.5 15.5H20V18H8.5z</StreamGeometry>
+  <!-- Lista: tres puntos + tres barras (Salidas). Caja de tinta cuadrada (16x16). -->
+  <StreamGeometry x:Key="Icon.List">M4 4h2.5v2.5H4z M8.5 4H20v2.5H8.5z M4 10.75h2.5v2.5H4z M8.5 10.75H20v2.5H8.5z M4 17.5h2.5V20H4z M8.5 17.5H20V20H8.5z</StreamGeometry>
 
-  <!-- Cadena/enlace (Emparejamiento): dos eslabones + travesaño. -->
-  <StreamGeometry x:Key="Icon.Link">M8 7H6.5a4.5 4.5 0 1 0 0 9H8v-2H6.5a2.5 2.5 0 1 1 0-5H8V7z M16 7h1.5a4.5 4.5 0 1 1 0 9H16v-2h1.5a2.5 2.5 0 1 0 0-5H16V7z M9.5 11h5v2h-5z</StreamGeometry>
+  <!-- Cadena/enlace (Emparejamiento): dos eslabones + travesaño. Redibujada en GUI-11 con
+       caja de tinta CUADRADA (16x16, centro 12,12): la geometría anterior era un glifo
+       chato (20x9) que, alineado arriba-izquierda dentro del Path de 22 px, quedaba flotando
+       en lo alto del menú respecto a los demás iconos. -->
+  <StreamGeometry x:Key="Icon.Link">M12 4a8 8 0 0 0 0 16v-4a4 4 0 0 1 0-8z M12 4a8 8 0 0 1 0 16v-4a4 4 0 0 0 0-8z M10 11h4v2h-4z</StreamGeometry>
 
-  <!-- Pulso/onda (Diagnóstico): latido con cinta de 2 px de grosor. -->
-  <StreamGeometry x:Key="Icon.Pulse">M1 14h4l2-6 4 12 3-11 2 5h7v2h-7l-2-5-3 11-4-12-2 6H1z</StreamGeometry>
+  <!-- Pulso/onda (Diagnóstico): latido con cinta de 2 px de grosor. Normalizado en GUI-11 a
+       caja de tinta cuadrada (20x20, centro 12,12) para alinear los 6 items del menú. -->
+  <StreamGeometry x:Key="Icon.Pulse">M2 12h4l2-10 4 18 3-12 2 4h5v2h-5l-2-4-3 12-4-18-2 10H2z</StreamGeometry>
 
   <!-- Engranaje (Configuración) — glifo estándar de 24 px con agujero central. -->
   <StreamGeometry x:Key="Icon.Gear">M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z</StreamGeometry>
