@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<assembly manifestType="custom" xmlns="urn:schemas-microsoft-com:asm.v1">
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
   <assemblyIdentity version="1.0.0.0" name="Orvita.Print.Gui.app" />
 
   <!-- Compatibilidad con Windows 10/11 (Doc/03 §13). -->
