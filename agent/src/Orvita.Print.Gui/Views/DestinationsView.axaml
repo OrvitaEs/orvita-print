@@ -1,74 +1,162 @@
 ﻿<UserControl xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Orvita.Print.Gui.ViewModels"
+        xmlns:v="using:Orvita.Print.Gui.Views"
         x:Class="Orvita.Print.Gui.Views.DestinationsView"
         x:DataType="vm:DestinationsViewModel">
-  <Grid RowDefinitions="Auto,*,Auto" Margin="0,8,0,0">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel MaxWidth="880">
 
-    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
-      <Button Content="Actualizar" Click="OnLoadClick" />
-      <TextBlock Text="{Binding DuplicateNote}" Foreground="#B26A00" VerticalAlignment="Center" TextWrapping="Wrap" />
-    </StackPanel>
-
-    <!-- Lista de salidas (role, impresora, copias, activa) — mismo contrato que el CLI. -->
-    <ListBox Grid.Row="1" ItemsSource="{Binding Destinations}" x:Name="DestinationsList">
-      <ListBox.ItemTemplate>
-        <DataTemplate DataType="vm:DestinationRow">
-          <Grid ColumnDefinitions="120,140,*,80,80,180" Margin="0,2" VerticalAlignment="Center">
-            <TextBlock Grid.Column="0" Text="{Binding Role}" FontWeight="Bold" />
-            <TextBlock Grid.Column="1" Text="{Binding PrinterDisplay}" TextTrimming="CharacterEllipsis" />
-            <TextBlock Grid.Column="2" Text="{Binding Description}" TextTrimming="CharacterEllipsis" />
-            <TextBlock Grid.Column="3" Text="{Binding Copies, StringFormat='{}{0} copias'}" />
-            <CheckBox Grid.Column="4" IsChecked="{Binding Enabled}" IsEnabled="False" Content="activa" />
-            <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="6">
-              <Button Content="Editar" Click="OnEditClick" />
-              <Button Content="Quitar" Click="OnRemoveClick" />
-              <Button Content="Probar" Click="OnTestClick" />
+      <!-- Cabecera (GUI-09): tile azul con icono de impresora + Actualizar a la derecha. -->
+      <v:PageHeader Icon="{StaticResource Icon.Printer}"
+                    Title="Salidas"
+                    Subtitle="Impresoras y copias de este equipo">
+        <v:PageHeader.Actions>
+          <Button Classes="secondary" Click="OnLoadClick">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Path Data="{StaticResource Icon.Refresh}" Width="15" Height="15"
+                    Stretch="Uniform" Fill="{StaticResource App.Navy.Brush}"/>
+              <TextBlock Text="Actualizar"/>
             </StackPanel>
-          </Grid>
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
+          </Button>
+        </v:PageHeader.Actions>
+      </v:PageHeader>
 
-    <!-- Formulario: añadir/editar salida (destination.add = upsert por role). -->
-    <Border Grid.Row="2" Padding="10" CornerRadius="4" Background="#FAFAFA" Margin="0,8,0,0">
-      <StackPanel Spacing="6">
-        <TextBlock Text="Añadir o editar salida (se guarda por su rol):" FontWeight="Bold" />
-        <Grid ColumnDefinitions="Auto,*,Auto,*,Auto,*" RowDefinitions="Auto" Margin="0,0,0,4">
-          <TextBlock Grid.Column="0" Text="Rol:" VerticalAlignment="Center" Margin="0,0,6,0" />
-          <TextBox Grid.Column="1" Text="{Binding FormRole}" Watermark="default" />
-          <TextBlock Grid.Column="2" Text="Etiqueta:" VerticalAlignment="Center" Margin="12,0,6,0" />
-          <TextBox Grid.Column="3" Text="{Binding FormLabel}" Watermark="Mostrador" />
-          <TextBlock Grid.Column="4" Text="Copias:" VerticalAlignment="Center" Margin="12,0,6,0" />
-          <NumericUpDown Grid.Column="5" Value="{Binding FormCopies}" Minimum="1" Maximum="99" Width="110" />
+      <!-- Aviso de impresora repetida (Doc/08 §4.3). -->
+      <Border Classes="banner-warn" IsVisible="{Binding DuplicateNote, Converter={x:Static v:NotNullConverter.Instance}}">
+        <Grid ColumnDefinitions="Auto,*">
+          <Path Grid.Column="0" Data="{StaticResource Icon.Warning}" Width="18" Height="18"
+                Stretch="Uniform" Fill="{StaticResource App.Amber.Brush}" VerticalAlignment="Center"/>
+          <TextBlock Grid.Column="1" Text="{Binding DuplicateNote}" Foreground="{StaticResource App.Amber.Brush}"
+                     VerticalAlignment="Center" Margin="10,0,0,0" TextWrapping="Wrap"/>
         </Grid>
-        <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto" Margin="0,0,0,4">
-          <TextBlock Grid.Column="0" Text="Tipo:" VerticalAlignment="Center" Margin="0,0,6,0" />
-          <ComboBox Grid.Column="1" ItemsSource="{Binding KindOptions}"
-                    SelectedValue="{Binding FormKind}"
-                    SelectedValueBinding="{Binding Value}"
-                    DisplayMemberBinding="{Binding Display}"
-                    MinWidth="150" />
-          <TextBlock Grid.Column="2" Text="Impresora:" VerticalAlignment="Center" Margin="12,0,6,0" />
-          <ComboBox Grid.Column="3" ItemsSource="{Binding Printers}"
-                    SelectedItem="{Binding FormPrinter}"
-                    DisplayMemberBinding="{Binding Display}"
-                    MinWidth="300" IsEnabled="{Binding PrinterSelectionEnabled}" />
-        </Grid>
-        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto" Margin="0,0,0,4">
-          <TextBlock Grid.Column="0" Text="Dirección (TCP 9100 o carpeta de PDFs):" VerticalAlignment="Center" Margin="0,0,6,0" />
-          <TextBox Grid.Column="1" Text="{Binding FormAddress}" Watermark="192.168.1.50:9100 ó C:\PDFs" />
-        </Grid>
-        <StackPanel Orientation="Horizontal" Spacing="12">
-          <CheckBox Content="Salida activa" IsChecked="{Binding FormEnabled}" />
-          <Button Content="Guardar salida" Click="OnSaveClick" />
-          <Button Content="Nuevo" Click="OnResetClick" />
+      </Border>
+
+      <!-- Error de carga (sin servicio). -->
+      <Border Classes="banner-danger" IsVisible="{Binding LoadError, Converter={x:Static v:NotNullConverter.Instance}}">
+        <TextBlock Text="{Binding LoadError}" Foreground="{StaticResource App.Red.Brush}" TextWrapping="Wrap"/>
+      </Border>
+
+      <!-- Lista de salidas como TARJETAS (GUI-09): icono, rol en negrita, impresora + copias,
+           badge Activa/Inactiva, casilla y botones con iconos. Mismo contrato que el CLI. -->
+      <ListBox Classes="table" ItemsSource="{Binding Destinations}" x:Name="DestinationsList" Margin="0,0,0,12">
+        <ListBox.ItemTemplate>
+          <DataTemplate DataType="vm:DestinationRow">
+            <Border Classes="card" Padding="14" Margin="0,0,0,10">
+              <Grid ColumnDefinitions="Auto,*,Auto,Auto" VerticalAlignment="Center">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                  <Border Width="38" Height="38" CornerRadius="9" Background="#E8F1FB">
+                    <Path Data="{StaticResource Icon.Printer}" Width="20" Height="20"
+                          Stretch="Uniform" Fill="{StaticResource App.Primary.Brush}"/>
+                  </Border>
+                  <StackPanel Spacing="2" VerticalAlignment="Center" MaxWidth="380">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock Text="{Binding Role}" FontWeight="Bold" FontSize="14"
+                                 Foreground="{StaticResource App.Navy.Brush}"/>
+                      <Border Classes="badge" Background="{Binding StateBadgeColor, Converter={x:Static v:HexToBrushConverter.Instance}}">
+                        <TextBlock Text="{Binding StateBadgeText}" Foreground="White" FontSize="11" FontWeight="Medium"/>
+                      </Border>
+                    </StackPanel>
+                    <TextBlock Text="{Binding PrinterDisplay}" FontSize="12"
+                               Foreground="{StaticResource App.Gray.Brush}" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Description}" FontSize="12"
+                               Foreground="{StaticResource App.Gray.Brush}" TextTrimming="CharacterEllipsis"/>
+                  </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="14"
+                            VerticalAlignment="Center" HorizontalAlignment="Right">
+                  <TextBlock Text="{Binding Copies, StringFormat='{}{0} copias'}" FontSize="12"
+                             Foreground="{StaticResource App.Gray.Brush}" VerticalAlignment="Center"/>
+                  <CheckBox Content="Activar" IsChecked="{Binding Enabled}" IsEnabled="False" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                  <Button Classes="secondary" Click="OnEditClick">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <Path Data="{StaticResource Icon.Edit}" Width="13" Height="13"
+                            Stretch="Uniform" Fill="{StaticResource App.Navy.Brush}"/>
+                      <TextBlock Text="Editar"/>
+                    </StackPanel>
+                  </Button>
+                  <Button Classes="secondary" Click="OnRemoveClick">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <Path Data="{StaticResource Icon.Trash}" Width="13" Height="13"
+                            Stretch="Uniform" Fill="{StaticResource App.Navy.Brush}"/>
+                      <TextBlock Text="Quitar"/>
+                    </StackPanel>
+                  </Button>
+                  <Button Classes="secondary" Click="OnTestClick">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <Path Data="{StaticResource Icon.CheckCircle}" Width="13" Height="13"
+                            Stretch="Uniform" Fill="{StaticResource App.Navy.Brush}"/>
+                      <TextBlock Text="Probar"/>
+                    </StackPanel>
+                  </Button>
+                </StackPanel>
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+      <!-- Formulario: añadir/editar salida (destination.add = upsert por role). -->
+      <Border Classes="card">
+        <StackPanel Spacing="10">
+          <TextBlock Classes="card-title" Text="Añadir o editar salida (se guarda por rol)"/>
+          <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto,Auto" Margin="0,0,0,2">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <TextBlock Grid.Row="0" Grid.Column="0" Classes="field-label" Text="Rol:"/>
+            <AutoCompleteBox Grid.Row="0" Grid.Column="1" Text="{Binding FormRole, Mode=TwoWay}"
+                             ItemsSource="{Binding RoleSuggestions}" Watermark="default"
+                             FilterMode="StartsWithOrdinal" MinimumPrefixLength="0"/>
+            <TextBlock Grid.Row="0" Grid.Column="2" Classes="field-label" Text="Etiqueta:" Margin="12,0,6,0"/>
+            <TextBox Grid.Row="0" Grid.Column="3" Text="{Binding FormLabel}" Watermark="Mostrador"/>
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Classes="field-label" Text="Copias:" Margin="0,8,6,0"/>
+            <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding FormCopies}" Minimum="1" Maximum="99" Margin="0,8,0,0"/>
+            <TextBlock Grid.Row="1" Grid.Column="2" Classes="field-label" Text="Tipo:" Margin="12,8,6,0"/>
+            <ComboBox Grid.Row="1" Grid.Column="3" ItemsSource="{Binding KindOptions}"
+                      SelectedValue="{Binding FormKind}"
+                      SelectedValueBinding="{Binding Value}"
+                      DisplayMemberBinding="{Binding Display}"
+                      Margin="0,8,0,0" HorizontalAlignment="Stretch"/>
+
+            <TextBlock Grid.Row="2" Grid.Column="0" Classes="field-label" Text="Impresora:" Margin="0,8,6,0"/>
+            <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding Printers}"
+                      SelectedItem="{Binding FormPrinter}"
+                      DisplayMemberBinding="{Binding Display}"
+                      IsEnabled="{Binding PrinterSelectionEnabled}"
+                      Margin="0,8,0,0" HorizontalAlignment="Stretch"/>
+            <TextBlock Grid.Row="2" Grid.Column="2" Classes="field-label" Text="Dirección:" Margin="12,8,6,0"/>
+            <TextBox Grid.Row="2" Grid.Column="3" Text="{Binding FormAddress}"
+                     Watermark="192.168.1.50:9100 o C:\PDFs" Margin="0,8,0,0"/>
+          </Grid>
+          <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,2,0,0">
+            <CheckBox Content="Salida activa" IsChecked="{Binding FormEnabled}" VerticalAlignment="Center"/>
+            <Button Classes="primary" Click="OnSaveClick">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Path Data="{StaticResource Icon.Save}" Width="14" Height="14" Stretch="Uniform" Fill="White"/>
+                <TextBlock Text="Guardar salida"/>
+              </StackPanel>
+            </Button>
+            <Button Classes="secondary" Click="OnResetClick" Content="Nuevo"/>
+          </StackPanel>
+          <TextBlock Text="{Binding WarningsText}" Foreground="{StaticResource App.Amber.Brush}"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding WarningsText, Converter={x:Static v:NotNullConverter.Instance}}"/>
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <Path Data="{StaticResource Icon.Info}" Width="14" Height="14" Stretch="Uniform"
+                  Fill="{StaticResource App.Primary.Brush}" VerticalAlignment="Top"/>
+            <TextBlock Classes="hint"
+                       Text="El tipo «pdf» es solo para demos — imprime el ticket a fichero con «Microsoft Print to PDF», sin impresora térmica."/>
+          </StackPanel>
         </StackPanel>
-        <TextBlock Text="{Binding WarningsText}" Foreground="#B26A00" TextWrapping="Wrap" />
-        <TextBlock Text="Nota: el tipo «pdf» es solo para demos — imprime el ticket a fichero con «Microsoft Print to PDF», sin impresora térmica."
-                   FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
-        <TextBlock Text="{Binding LoadError}" Foreground="#C62828" TextWrapping="Wrap" />
-      </StackPanel>
-    </Border>
-  </Grid>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
 </UserControl>

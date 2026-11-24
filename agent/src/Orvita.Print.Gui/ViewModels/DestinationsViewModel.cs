@@ -42,6 +42,14 @@ public sealed class DestinationRow
         ? $"{PdfKindPrinterName} → {Address ?? "(carpeta por defecto)"}"
         : PrinterName ?? "(sin impresora)";
 
+    // ------------------------------------------ señales para el dibujo (GUI-09, badge)
+
+    /// <summary>Texto del badge de estado de la tarjeta: «Activa» / «Inactiva».</summary>
+    public string StateBadgeText => Enabled ? "Activa" : "Inactiva";
+
+    /// <summary>Color del badge: verde sólido cuando la salida está activa, gris si no.</summary>
+    public string StateBadgeColor => Enabled ? "#2E7D32" : "#90A4AE";
+
     public const string PdfKindPrinterName = "Microsoft Print to PDF";
 
     public static DestinationRow FromJson(JsonElement d) => new()
@@ -195,7 +203,12 @@ public partial class DestinationsViewModel : ObservableObject
         }
 
         DuplicateNote = DuplicatePrinterNote(Destinations);
+        OnPropertyChanged(nameof(RoleSuggestions));
     }
+
+    /// <summary>Sugerencias del combo editable de rol: los roles existentes + «default» (GUI-09).</summary>
+    public IEnumerable<string> RoleSuggestions =>
+        Destinations.Select(d => d.Role).Where(r => !string.IsNullOrWhiteSpace(r)).Distinct().Append("default");
 
     /// <summary>Guarda la salida del formulario (destination.add = upsert por role). No lanza.</summary>
     public bool Save()
