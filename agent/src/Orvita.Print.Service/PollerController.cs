@@ -15,6 +15,7 @@ public sealed class PollerController
     private readonly Func<ITransport> _serverAccessor;
     private readonly JobProcessor _processor;
     private readonly Func<int> _intervalSeconds;
+    private readonly ServerPendingHint? _serverPending;
     private readonly ILogger _logger;
     private readonly object _gate = new();
 
@@ -26,12 +27,14 @@ public sealed class PollerController
         Func<ITransport> serverAccessor,
         JobProcessor processor,
         Func<int> intervalSeconds,
-        ILogger<PollerController> logger)
+        ILogger<PollerController> logger,
+        ServerPendingHint? serverPending = null)
     {
         _serverAccessor = serverAccessor ?? throw new ArgumentNullException(nameof(serverAccessor));
         _processor = processor ?? throw new ArgumentNullException(nameof(processor));
         _intervalSeconds = intervalSeconds ?? throw new ArgumentNullException(nameof(intervalSeconds));
         _logger = logger;
+        _serverPending = serverPending;
     }
 
     /// <summary>Estado visible del poller actual (Idle si nunca arrancó / está parado).</summary>
@@ -70,7 +73,8 @@ public sealed class PollerController
             var poller = new Poller(
                 _serverAccessor(), // el transporte ACTIVO en este instante (re-pair → nuevo transporte)
                 new PollerOptions { BaseInterval = TimeSpan.FromSeconds(Math.Max(1, _intervalSeconds())) },
-                log: message => _logger.LogInformation("{Message}", message));
+                log: message => _logger.LogInformation("{Message}", message),
+                serverPending: _serverPending);
 
             _poller = poller;
             _cts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);

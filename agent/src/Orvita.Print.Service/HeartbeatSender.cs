@@ -41,6 +41,7 @@ public sealed class HeartbeatSender
     private readonly IDestinationProvider _destinations;
     private readonly RemoteConfigState _configState;
     private readonly AgentRuntimeStatus? _runtime;
+    private readonly ServerPendingHint? _pendingHint;
     private readonly ILogger _logger;
 
     public HeartbeatSender(
@@ -49,7 +50,8 @@ public sealed class HeartbeatSender
         IDestinationProvider destinations,
         RemoteConfigState configState,
         ILogger? logger = null,
-        AgentRuntimeStatus? runtime = null)
+        AgentRuntimeStatus? runtime = null,
+        ServerPendingHint? pendingHint = null)
     {
         _server = server ?? throw new ArgumentNullException(nameof(server));
         _outbox = outbox ?? throw new ArgumentNullException(nameof(outbox));
@@ -57,6 +59,7 @@ public sealed class HeartbeatSender
         _configState = configState ?? throw new ArgumentNullException(nameof(configState));
         _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
         _runtime = runtime;
+        _pendingHint = pendingHint;
     }
 
     /// <summary>
@@ -97,6 +100,10 @@ public sealed class HeartbeatSender
         _logger.LogDebug(
             "Heartbeat aceptado: {Pending} pendiente(s) en el servidor, config_version {Version}.",
             response.PendingCount, response.ConfigVersion);
+
+        // GUI-15 (decisión C): el poller necesita saber si el servidor ve pendientes que el
+        // cursor no alcanza — si es el caso y el fetch vuelve vacío, re-escanea desde after=0.
+        _pendingHint?.Report(response.PendingCount ?? 0);
 
         if (response.ConfigVersion is { } version && version != _configState.ConfigVersion)
         {

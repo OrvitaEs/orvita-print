@@ -34,6 +34,8 @@ public static class ManagementProtocol
         public const string RestartPoller = "restart-poller";
         public const string QueueList = "queue.list";
         public const string QueueItem = "queue.item";
+        public const string QueueRetry = "queue.retry";
+        public const string QueueReview = "queue.review";
         public const string Ping = "ping";
     }
 

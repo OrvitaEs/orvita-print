@@ -17,4 +17,12 @@ public interface ITransport
 
     /// <summary>POST /jobs/{id}/ack — resultado final (delivered | failed).</summary>
     Task AckAsync(long jobId, JobResult result, CancellationToken ct);
+
+    /// <summary>
+    /// Ack que además lee la respuesta del servidor (Doc/04 §5.6: {ok, job_status}), para
+    /// saber si el trabajo sigue siendo nuestra verdad (GUI-15, decisión B: ack de cortesía
+    /// tras una reimpresión local). Implementación POR DEFECTO: null = «sin información» —
+    /// los transportes que no la lean (o fakes antiguos) no cambian de comportamiento.
+    /// </summary>
+    Task<DocumentAck?> AckDetailedAsync(long jobId, JobResult result, CancellationToken ct) => Task.FromResult<DocumentAck?>(null);
 }

@@ -49,19 +49,25 @@ public sealed class Poller
     private readonly PollerOptions _options;
     private readonly Func<double> _random;
     private readonly Func<TimeSpan, CancellationToken, Task> _delayAsync;
+    private readonly ServerPendingHint? _serverPending;
+
+    /// <summary>Última generación del hint para la que ya se re-escaneó (una vez por reporte).</summary>
+    private int _lastRescanGeneration;
 
     public Poller(
         ITransport transport,
         PollerOptions? options = null,
         Action<string>? log = null,
         Func<double>? random = null,
-        Func<TimeSpan, CancellationToken, Task>? delayAsync = null)
+        Func<TimeSpan, CancellationToken, Task>? delayAsync = null,
+        ServerPendingHint? serverPending = null)
     {
         _transport = transport ?? throw new ArgumentNullException(nameof(transport));
         _options = options ?? new PollerOptions();
         Log = log;
         _random = random ?? Random.Shared.NextDouble;
         _delayAsync = delayAsync ?? ((delay, token) => Task.Delay(delay, token));
+        _serverPending = serverPending;
     }
 
     /// <summary>Log opcional (el Service lo conectará a su ILogger; en pruebas, a una lista).</summary>
@@ -98,7 +104,24 @@ public sealed class Poller
 
                     State = PollerState.Running;
 
-                    foreach (var job in batch.Jobs)
+                    // Re-escaneo (GUI-15, decisión C): el heartbeat reporta pendientes que el
+                    // cursor no ve (p. ej. un trabajo reencolado desde el panel conserva su id
+                    // y el cursor solo avanza). Una vez por reporte: fetch extra desde after=0.
+                    var jobs = batch.Jobs;
+                    if (jobs.Count == 0 && cursor > 0 && ShouldRescan(out var hintGeneration))
+                    {
+                        LogMessage("re-escaneo: el servidor reporta pendientes que el cursor no ve; re-escaneo desde after=0.");
+                        _lastRescanGeneration = hintGeneration;
+                        var rescanned = await _transport.FetchAsync(new Cursor(0), cancellationToken).ConfigureAwait(false);
+                        if (rescanned.Cursor > cursor)
+                        {
+                            cursor = rescanned.Cursor;
+                        }
+
+                        jobs = rescanned.Jobs;
+                    }
+
+                    foreach (var job in jobs)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
                         try
@@ -180,6 +203,19 @@ public sealed class Poller
                 State = PollerState.Stopped;
             }
         }
+    }
+
+    private bool ShouldRescan(out int hintGeneration)
+    {
+        hintGeneration = 0;
+        if (_serverPending is not { } hint)
+        {
+            return false;
+        }
+
+        var (pendingCount, generation) = hint.Snapshot();
+        hintGeneration = generation;
+        return pendingCount > 0 && generation != _lastRescanGeneration;
     }
 
     private TimeSpan ComputeJitteredInterval()

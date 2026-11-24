@@ -32,8 +32,18 @@ public partial class QueueViewModel : ObservableObject
     private readonly List<QueueJobRow> _rows = [];
     private readonly HashSet<long> _seenIncidentJobs = [];
 
+    /// <summary>Confirmación de «Reimprimir» sobre un trabajo ya impreso (¿seguro?): la inyecta la vista (diálogo). null → no se reimprime.</summary>
+    public Func<string, Task<bool>>? ConfirmReprintDone { get; set; }
+
+    /// <summary>Balón de bandeja para una reimpresión que vuelve a fallar (la vista/enrutador lo muestra).</summary>
+    public event Action<TrayBalloon>? BalloonRequested;
+
     [ObservableProperty]
     private bool _windowVisible;
+
+    /// <summary>Una reimpresión en marcha: la fila de acciones se desactiva (no imprimir dos veces).</summary>
+    [ObservableProperty]
+    private bool _retryInProgress;
 
     [ObservableProperty]
     private string _stateFilter = QueueFilter.AllStates;
@@ -87,9 +97,15 @@ public partial class QueueViewModel : ObservableObject
         new(QueueFilter.DuplicateState, "Reimpreso tras corte"),
     ];
 
-    /// <summary>Hay trabajos con error o reimpresos tras corte que el usuario no ha visto.</summary>
-    public bool HasUnseenIncidents => _rows.Any(r =>
-        (r.State == "error" || r.DuplicateSuspected) && !_seenIncidentJobs.Contains(r.JobId));
+    /// <summary>Hay trabajos con error o reimpresos tras corte que el usuario no ha visto. Los errores YA revisados (marca local GUI-15) no cuentan.</summary>
+    public bool HasUnseenIncidents => UnseenIncidents().Count > 0;
+
+    private List<QueueJobRow> UnseenIncidents() =>
+        _rows.Where(r =>
+                (r.State == "error" || r.DuplicateSuspected)
+                && r.ReviewedAt is null
+                && !_seenIncidentJobs.Contains(r.JobId))
+            .ToList();
 
     public QueueViewModel(IManagementClient client)
     {
@@ -149,12 +165,11 @@ public partial class QueueViewModel : ObservableObject
         LastRefreshText = $"Actualizada: {DateTime.Now:HH:mm:ss}";
     }
 
-    /// <summary>Recalcula el banner de errores no vistos (persistente hasta que el usuario los abra).</summary>
+    /// <summary>Recalcula el banner de errores no vistos (persistente hasta que el usuario los abra).
+    /// El contador cuenta SOLO errores NO revisados (GUI-15, decisión D).</summary>
     private void UpdateBanner()
     {
-        var unseen = _rows.Where(r =>
-            (r.State == "error" || r.DuplicateSuspected)
-            && !_seenIncidentJobs.Contains(r.JobId)).ToList();
+        var unseen = UnseenIncidents();
         BannerVisible = unseen.Count > 0;
         BannerText = unseen.Count == 1
             ? $"Hay 1 trabajo con incidencia sin revisar (#{unseen[0].JobId})."
@@ -265,6 +280,138 @@ public partial class QueueViewModel : ObservableObject
         }
 
         UpdateBanner();
+    }
+
+    // ------------------------------------------------------ acciones de fila (GUI-15)
+
+    /// <summary>Entrada de la vista (botón de fila / detalle): reimprimir con confirmación para los «done».</summary>
+    public async Task RequestRetryAsync(QueueJobRow? row)
+    {
+        if (row is null)
+        {
+            return;
+        }
+
+        if (row.State == "done" && ConfirmReprintDone is { } confirm)
+        {
+            var accepted = await confirm(
+                $"El trabajo #{row.JobId} ya está impreso. ¿Seguro? Imprimirá OTRA copia del ticket.");
+            if (!accepted)
+            {
+                return;
+            }
+        }
+
+        await RetryJobCommand.ExecuteAsync(row);
+    }
+
+    [RelayCommand]
+    private async Task RetryJobAsync(QueueJobRow? row)
+    {
+        if (row is null || RetryInProgress)
+        {
+            return; // sin doble clic: no imprimir dos copias por accidente
+        }
+
+        RetryInProgress = true;
+        try
+        {
+            // La impresión tarda (segundos): fuera del hilo de UI (Doc/08 §2).
+            var response = await Task.Run(() =>
+                _client.Send(ManagementProtocol.Operations.QueueRetry, new { job_id = row.JobId }));
+
+            if (response.Ok && response.Data is { ValueKind: JsonValueKind.Object } data)
+            {
+                ApplyQueueJobUpdate(data);
+            }
+            else
+            {
+                LoadError = response.Error is { } error
+                    ? $"No se pudo reimprimir el trabajo #{row.JobId}: {error}"
+                    : $"No se pudo reimprimir el trabajo #{row.JobId}.";
+            }
+        }
+        catch (Exception ex) when (MainViewModel.IsPipeFault(ex))
+        {
+            LoadError = "El servicio Orvita Print no está en ejecución: no se pudo reimprimir.";
+        }
+        finally
+        {
+            RetryInProgress = false;
+        }
+    }
+
+    /// <summary>Marca local «revisada» (sin confirmación: es reversible y no imprime nada).</summary>
+    public async Task RequestReviewAsync(QueueJobRow? row) =>
+        await ReviewJobCommand.ExecuteAsync(row);
+
+    [RelayCommand]
+    private async Task ReviewJobAsync(QueueJobRow? row)
+    {
+        if (row is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var response = await Task.Run(() =>
+                _client.Send(ManagementProtocol.Operations.QueueReview, new { job_id = row.JobId, reviewed = true }));
+
+            if (response.Ok && response.Data is { ValueKind: JsonValueKind.Object } data)
+            {
+                ApplyQueueJobUpdate(data);
+            }
+            else
+            {
+                LoadError = response.Error is { } error
+                    ? $"No se pudo marcar el trabajo #{row.JobId} como revisado: {error}"
+                    : $"No se pudo marcar el trabajo #{row.JobId} como revisado.";
+            }
+        }
+        catch (Exception ex) when (MainViewModel.IsPipeFault(ex))
+        {
+            LoadError = "El servicio Orvita Print no está en ejecución: no se pudo marcar como revisada.";
+        }
+    }
+
+    /// <summary>
+    /// Aplica al vuelo el resultado de queue.retry/queue.review (la fila con el estado final
+    /// que devuelve la op): sustituye la fila, rearma el banner si volvió a fallar y refresca
+    /// el detalle si es el trabajo seleccionado.
+    /// </summary>
+    private void ApplyQueueJobUpdate(JsonElement jobWire)
+    {
+        var updated = QueueJobRow.FromJson(jobWire);
+        var index = _rows.FindIndex(r => r.JobId == updated.JobId);
+        if (index >= 0)
+        {
+            _rows[index] = updated;
+        }
+        else
+        {
+            _rows.Add(updated);
+        }
+
+        if (updated.State == "error")
+        {
+            // Nueva incidencia (o re-fallo): vuelve al banner Y notifica (GUI-15).
+            _seenIncidentJobs.Remove(updated.JobId);
+            BalloonRequested?.Invoke(new TrayBalloon(
+                "Orvita Print · incidencia de impresión",
+                $"Trabajo #{updated.JobId} volvió a fallar: {updated.LastErrorDisplay ?? "error de impresión"}.",
+                Error: true));
+        }
+
+        ApplyFilters();
+        UpdateBanner();
+
+        // El detalle abierto queda pegado al trabajo: lo recargamos con el estado nuevo
+        // SIN marcarlo como visto — un re-fallo tras reimprimir vuelve al banner (GUI-15).
+        if (SelectedJob is { } selected && selected.JobId == updated.JobId)
+        {
+            LoadDetail(updated);
+        }
     }
 
     private static string Format(DateTimeOffset value) =>

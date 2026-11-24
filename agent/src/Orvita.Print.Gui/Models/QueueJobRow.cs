@@ -33,11 +33,20 @@ public sealed class QueueJobRow
 
     public DateTimeOffset? PrintedAt { get; init; }
 
+    /// <summary>Marca local «revisada» (GUI-15): el TPV ya gestionó la incidencia; null si no.</summary>
+    public DateTimeOffset? ReviewedAt { get; init; }
+
     /// <summary>Etiqueta en español (Doc/08 §4.2).</summary>
-    public string StateLabel => QueueStatusMapper.Label(State, DuplicateSuspected);
+    public string StateLabel => QueueStatusMapper.Label(State, DuplicateSuspected, ReviewedAt is not null);
 
     /// <summary>Color del badge (hex, misma paleta que Doc/08 §4.2).</summary>
-    public string StateColor => QueueStatusMapper.Color(State, DuplicateSuspected);
+    public string StateColor => QueueStatusMapper.Color(State, DuplicateSuspected, ReviewedAt is not null);
+
+    /// <summary>«Reimprimir» en la fila: trabajos en error y también en done (reimprimir copia).</summary>
+    public bool ShowRetry => State is "error" or "done";
+
+    /// <summary>«Marcar como revisada» SOLO en filas con error sin revisar (GUI-15).</summary>
+    public bool ShowReview => State == "error" && ReviewedAt is null;
 
     /// <summary>Nº de pedido tal cual se busca («por nº de pedido»); vacío si el servidor no lo mandó.</summary>
     public string OrderDisplay => OrderId is { } id ? $"#{id}" : string.Empty;
@@ -60,32 +69,42 @@ public sealed class QueueJobRow
         CreatedAt = StatusSnapshot.GetTimestamp(job, "created_at") ?? DateTimeOffset.MinValue,
         UpdatedAt = StatusSnapshot.GetTimestamp(job, "updated_at") ?? DateTimeOffset.MinValue,
         PrintedAt = StatusSnapshot.GetTimestamp(job, "printed_at"),
+        ReviewedAt = StatusSnapshot.GetTimestamp(job, "reviewed_at"),
     };
 }
 
 /// <summary>Etiqueta y color de los cinco estados locales (Doc/08 §4.2) — puro y testeable.</summary>
 public static class QueueStatusMapper
 {
-    public static string Label(string state, bool duplicate) => duplicate
+    public static string Label(string state, bool duplicate, bool reviewed = false) => duplicate
         ? "Reimpreso tras corte"
-        : state switch
+        : (state, reviewed) switch
         {
-            "received" => "Pendiente",
-            "printing" => "Imprimiéndose",
-            "done" => "Impreso",
-            "error" => "Error",
-            _ => state,
+            ("error", true) => "Error · revisado",
+            _ => state switch
+            {
+                "received" => "Pendiente",
+                "printing" => "Imprimiéndose",
+                "done" => "Impreso",
+                "error" => "Error",
+                _ => state,
+            },
         };
 
-    public static string Color(string state, bool duplicate) => duplicate
+    public static string Color(string state, bool duplicate, bool reviewed = false) => duplicate
         ? "#F9A825" // ámbar: badge sobre el estado
-        : state switch
+        : (state, reviewed) switch
         {
-            "received" => "#9E9E9E",    // gris
-            "printing" => "#1565C0",    // azul (spinner en la UI)
-            "done" => "#2E7D32",        // verde
-            "error" => "#C62828",       // rojo
-            _ => "#9E9E9E",
+            // Gris-rojo (GUI-15): la incidencia existe pero el TPV ya la gestionó.
+            ("error", true) => "#9A6A6E",
+            _ => state switch
+            {
+                "received" => "#9E9E9E",    // gris
+                "printing" => "#1565C0",    // azul (spinner en la UI)
+                "done" => "#2E7D32",        // verde
+                "error" => "#C62828",       // rojo
+                _ => "#9E9E9E",
+            },
         };
 }
 

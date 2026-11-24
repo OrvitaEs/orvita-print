@@ -112,23 +112,39 @@ public sealed class DirectTransport : ITransport, IJobReleaseTransport, IDisposa
     /// <inheritdoc />
     public async Task AckAsync(long jobId, JobResult result, CancellationToken ct)
     {
+        await AckDetailedCoreAsync(jobId, result, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Ack que devuelve la respuesta del servidor (Doc/04 §5.6): {ok, job_status}. Igual que
+    /// <see cref="AckAsync"/>: 409/410/404 no son error (trabajo terminal o ajeno) pero
+    /// tampoco traen un estado utilizable → null.
+    /// </summary>
+    public async Task<DocumentAck?> AckDetailedAsync(long jobId, JobResult result, CancellationToken ct)
+    {
+        return await AckDetailedCoreAsync(jobId, result, ct).ConfigureAwait(false);
+    }
+
+    private async Task<DocumentAck?> AckDetailedCoreAsync(long jobId, JobResult result, CancellationToken ct)
+    {
         ArgumentNullException.ThrowIfNull(result);
         var url = new Uri(_baseUri, $"jobs/{jobId}/ack");
         using var response = await SendAsync(HttpMethod.Post, url, CreateJsonContent(result), ct).ConfigureAwait(false);
 
         if (response.IsSuccessStatusCode)
         {
-            return;
+            return await ReadAsync<DocumentAck>(response, ct).ConfigureAwait(false);
         }
 
         // El trabajo ya está terminal (expiró, fue cancelado o expiró mientras imprimíamos):
         // no hay nada que hacer, pero tampoco es un error del poller.
         if (response.StatusCode is HttpStatusCode.Conflict or HttpStatusCode.Gone or HttpStatusCode.NotFound)
         {
-            return;
+            return null;
         }
 
         await ThrowForErrorAsync(response, ct, $"POST /jobs/{jobId}/ack").ConfigureAwait(false);
+        return null;
     }
 
     /// <summary>GET /health (Doc/04 §5.1): diagnóstico y comprobación de compatibilidad de api_version.</summary>

@@ -56,6 +56,9 @@ public static class AgentHostBuilder
         builder.Services.AddSingleton<PairingWaiter>();
         builder.Services.AddSingleton<ServerConnection>();
         builder.Services.AddSingleton<RemoteConfigState>();
+        // GUI-15 (decisión C): puente heartbeat → poller para el re-escaneo de pendientes
+        // que el cursor no ve (trabajos reencolados desde el panel).
+        builder.Services.AddSingleton<ServerPendingHint>();
 
         // Almacén local F2-10: MISMA BD que la cola (un fichero, un respaldo), tablas propias.
         builder.Services.AddSingleton(sp =>
@@ -123,7 +126,8 @@ public static class AgentHostBuilder
             sp.GetRequiredService<IDestinationProvider>(),
             sp.GetRequiredService<RemoteConfigState>(),
             sp.GetRequiredService<ILogger<HeartbeatSender>>(),
-            sp.GetRequiredService<AgentRuntimeStatus>()));
+            sp.GetRequiredService<AgentRuntimeStatus>(),
+            sp.GetRequiredService<ServerPendingHint>()));
         builder.Services.AddSingleton<TestPrintService>();
 
         // F2-08: emparejamiento por pipe + dueño del poller (re-pair/reinicio sin tirar el proceso).
@@ -134,7 +138,8 @@ public static class AgentHostBuilder
             intervalSeconds: () => sp.GetRequiredService<RemoteConfigState>().PollIntervalSeconds
                 ?? sp.GetRequiredService<AgentRuntimeStatus>().PairPollIntervalSeconds
                 ?? sp.GetRequiredService<AgentOptions>().PollIntervalSeconds,
-            logger: sp.GetRequiredService<ILogger<PollerController>>()));
+            logger: sp.GetRequiredService<ILogger<PollerController>>(),
+            serverPending: sp.GetRequiredService<ServerPendingHint>()));
         builder.Services.AddSingleton<ManagementRequestHandler>();
         // Singleton explícito: el UpdateApplier (F2-11) debe poder parar la pipe limpiamente.
         builder.Services.AddSingleton<ManagementPipeServer>();

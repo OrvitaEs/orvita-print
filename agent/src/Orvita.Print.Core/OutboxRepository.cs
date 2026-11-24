@@ -66,6 +66,13 @@ public sealed class OutboxJob
             return null;
         }
     }
+
+    /// <summary>
+    /// Marca local «el TPV ya lo gestionó» (socio, GUI-15): se pone SOLO a mano. No cambia el
+    /// estado del trabajo en el servidor — ese es la verdad operativa — ni el estado local:
+    /// solo saca el trabajo del contador/banner de incidencias de la GUI.
+    /// </summary>
+    public DateTimeOffset? ReviewedAt { get; set; }
 }
 
 /// <summary>
@@ -88,8 +95,13 @@ public sealed class OutboxRepository : IDisposable
     /// <summary>Espera máxima ante bloqueo de otro proceso/hilo antes de fallar con SQLITE_BUSY.</summary>
     public const int BusyTimeoutMs = 5000;
 
-    /// <summary>Versión del esquema local; sube con migraciones futuras.</summary>
-    public const string SchemaVersion = "1";
+    /// <summary>Versión del esquema local; sube con migraciones futuras (v2: columna reviewed_at).</summary>
+    public const string SchemaVersion = "2";
+
+    /// <summary>Lista de columnas de outbox_jobs usada por todos los SELECT/RETURNING (una sola casa).</summary>
+    private const string JobColumns =
+        "job_id, printer_role, copies, document_json, state, attempts, duplicate_suspected, " +
+        "error_code, error_message, created_at, updated_at, printed_at, reviewed_at";
 
     private readonly string _databasePath;
     private readonly string _connectionString;
@@ -176,15 +188,12 @@ public sealed class OutboxRepository : IDisposable
     {
         using var connection = Open();
         using var command = connection.CreateCommand();
-        command.CommandText = """
-            UPDATE outbox_jobs
-            SET state = 'printing', attempts = attempts + 1, updated_at = $now
-            WHERE job_id = (
-                SELECT job_id FROM outbox_jobs WHERE state = 'received' ORDER BY job_id LIMIT 1
-            )
-            RETURNING job_id, printer_role, copies, document_json, state, attempts, duplicate_suspected,
-                      error_code, error_message, created_at, updated_at, printed_at;
-            """;
+        command.CommandText =
+            "UPDATE outbox_jobs " +
+            "SET state = 'printing', attempts = attempts + 1, updated_at = $now " +
+            "WHERE job_id = (" +
+            "SELECT job_id FROM outbox_jobs WHERE state = 'received' ORDER BY job_id LIMIT 1) " +
+            "RETURNING " + JobColumns + ";";
         command.Parameters.AddWithValue("$now", Now());
 
         using var reader = command.ExecuteReader();
@@ -226,6 +235,48 @@ public sealed class OutboxRepository : IDisposable
             UPDATE outbox_jobs
             SET state = 'received', updated_at = $now
             WHERE job_id = $job_id AND state = 'printing';
+            """;
+        command.Parameters.AddWithValue("$job_id", jobId);
+        command.Parameters.AddWithValue("$now", Now());
+        return command.ExecuteNonQuery() > 0;
+    }
+
+    /// <summary>
+    /// Marca local «revisada» (GUI-15, decisión D): el TPV ya gestionó la incidencia. Es una
+    /// marca LOCAL — el estado del servidor (<c>failed</c>) no cambia, es la verdad operativa.
+    /// Con <c>reviewed = false</c> quita la marca. Solo requiere que el trabajo exista.
+    /// </summary>
+    public bool SetReviewed(long jobId, bool reviewed)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE outbox_jobs
+            SET reviewed_at = CASE WHEN $reviewed THEN $now ELSE NULL END, updated_at = $now
+            WHERE job_id = $job_id;
+            """;
+        command.Parameters.AddWithValue("$job_id", jobId);
+        command.Parameters.AddWithValue("$reviewed", reviewed);
+        command.Parameters.AddWithValue("$now", Now());
+        return command.ExecuteNonQuery() > 0;
+    }
+
+    /// <summary>
+    /// Reimprimir (GUI-15, decisión A): devuelve un trabajo en <c>error</c> o <c>done</c> a
+    /// <c>received</c> para imprimirlo de nuevo CON EL DOCUMENTO que ya tiene (reimpresión
+    /// LOCAL: no hace falta el servidor para sacar papel). Limpia el error y la marca de
+    /// revisión — si vuelve a fallar es una incidencia nueva y volverá al banner. No toca
+    /// <c>duplicate_suspected</c> ni los intentos ya contados. false si el trabajo no está
+    /// en un estado re-imprimible o no existe.
+    /// </summary>
+    public bool RetryRequeue(long jobId)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE outbox_jobs
+            SET state = 'received', error_code = NULL, error_message = NULL, reviewed_at = NULL, updated_at = $now
+            WHERE job_id = $job_id AND state IN ('error', 'done');
             """;
         command.Parameters.AddWithValue("$job_id", jobId);
         command.Parameters.AddWithValue("$now", Now());
@@ -279,13 +330,11 @@ public sealed class OutboxRepository : IDisposable
     {
         using var connection = Open();
         using var command = connection.CreateCommand();
-        command.CommandText = """
-            UPDATE outbox_jobs
-            SET state = 'received', duplicate_suspected = 1, updated_at = $now
-            WHERE state = 'printing'
-            RETURNING job_id, printer_role, copies, document_json, state, attempts, duplicate_suspected,
-                      error_code, error_message, created_at, updated_at, printed_at;
-            """;
+        command.CommandText =
+            "UPDATE outbox_jobs " +
+            "SET state = 'received', duplicate_suspected = 1, updated_at = $now " +
+            "WHERE state = 'printing' " +
+            "RETURNING " + JobColumns + ";";
         command.Parameters.AddWithValue("$now", Now());
 
         var recovered = new List<OutboxJob>();
@@ -337,11 +386,8 @@ public sealed class OutboxRepository : IDisposable
     {
         using var connection = Open();
         using var command = connection.CreateCommand();
-        command.CommandText = """
-            SELECT job_id, printer_role, copies, document_json, state, attempts, duplicate_suspected,
-                   error_code, error_message, created_at, updated_at, printed_at
-            FROM outbox_jobs ORDER BY updated_at DESC, job_id DESC LIMIT 1;
-            """;
+        command.CommandText =
+            "SELECT " + JobColumns + " FROM outbox_jobs ORDER BY updated_at DESC, job_id DESC LIMIT 1;";
         using var reader = command.ExecuteReader();
         return reader.Read() ? MapJob(reader) : null;
     }
@@ -351,11 +397,8 @@ public sealed class OutboxRepository : IDisposable
     {
         using var connection = Open();
         using var command = connection.CreateCommand();
-        command.CommandText = """
-            SELECT job_id, printer_role, copies, document_json, state, attempts, duplicate_suspected,
-                   error_code, error_message, created_at, updated_at, printed_at
-            FROM outbox_jobs WHERE job_id = $job_id;
-            """;
+        command.CommandText =
+            "SELECT " + JobColumns + " FROM outbox_jobs WHERE job_id = $job_id;";
         command.Parameters.AddWithValue("$job_id", jobId);
         using var reader = command.ExecuteReader();
         return reader.Read() ? MapJob(reader) : null;
@@ -371,11 +414,8 @@ public sealed class OutboxRepository : IDisposable
         ArgumentOutOfRangeException.ThrowIfNegative(limit);
         using var connection = Open();
         using var command = connection.CreateCommand();
-        command.CommandText = """
-            SELECT job_id, printer_role, copies, document_json, state, attempts, duplicate_suspected,
-                   error_code, error_message, created_at, updated_at, printed_at
-            FROM outbox_jobs ORDER BY updated_at DESC, job_id DESC LIMIT $limit;
-            """;
+        command.CommandText =
+            "SELECT " + JobColumns + " FROM outbox_jobs ORDER BY updated_at DESC, job_id DESC LIMIT $limit;";
         command.Parameters.AddWithValue("$limit", limit);
         var jobs = new List<OutboxJob>();
         using var reader = command.ExecuteReader();
@@ -392,11 +432,8 @@ public sealed class OutboxRepository : IDisposable
     {
         using var connection = Open();
         using var command = connection.CreateCommand();
-        command.CommandText = """
-            SELECT job_id, printer_role, copies, document_json, state, attempts, duplicate_suspected,
-                   error_code, error_message, created_at, updated_at, printed_at
-            FROM outbox_jobs WHERE state = $state ORDER BY job_id;
-            """;
+        command.CommandText =
+            "SELECT " + JobColumns + " FROM outbox_jobs WHERE state = $state ORDER BY job_id;";
         command.Parameters.AddWithValue("$state", ToDb(state));
         var jobs = new List<OutboxJob>();
         using var reader = command.ExecuteReader();
@@ -441,7 +478,8 @@ public sealed class OutboxRepository : IDisposable
                 error_message       TEXT,
                 created_at          TEXT NOT NULL,
                 updated_at          TEXT NOT NULL,
-                printed_at          TEXT
+                printed_at          TEXT,
+                reviewed_at         TEXT
             );
             CREATE INDEX IF NOT EXISTS ix_outbox_jobs_state ON outbox_jobs(state, job_id);
             CREATE TABLE IF NOT EXISTS outbox_meta (
@@ -450,6 +488,56 @@ public sealed class OutboxRepository : IDisposable
             );
             INSERT OR IGNORE INTO outbox_meta(key, value) VALUES ('schema_version', '1');
             """);
+        MigrateSchema(connection);
+    }
+
+    /// <summary>
+    /// Migración automática al abrir (GUI-15): v1 → v2 añade la columna <c>reviewed_at</c>
+    /// con ALTER TABLE (ADD COLUMN con NULL: los datos existentes NO se pierden). Idempotente:
+    /// una BD ya en v2 no se toca, y una BD nueva ya nace con la columna.
+    /// </summary>
+    private void MigrateSchema(SqliteConnection connection)
+    {
+        var version = ReadSchemaVersion(connection);
+        if (string.Equals(version, SchemaVersion, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        if (version == "1" && !ColumnExists(connection, "outbox_jobs", "reviewed_at"))
+        {
+            Execute(connection, "ALTER TABLE outbox_jobs ADD COLUMN reviewed_at TEXT;");
+            Log?.Invoke("Migración del outbox aplicada: esquema 1 → 2 (columna reviewed_at, sin pérdida de datos).");
+        }
+        else if (version is null)
+        {
+            Log?.Invoke($"Outbox sin versión registrada: marcado esquema {SchemaVersion}.");
+        }
+
+        Execute(connection, $"UPDATE outbox_meta SET value = '{SchemaVersion}' WHERE key = 'schema_version';");
+    }
+
+    private static string? ReadSchemaVersion(SqliteConnection connection)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT value FROM outbox_meta WHERE key = 'schema_version';";
+        return command.ExecuteScalar() as string;
+    }
+
+    private static bool ColumnExists(SqliteConnection connection, string table, string column)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = $"PRAGMA table_info({table});";
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            if (string.Equals(reader.GetString(1), column, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static void Execute(SqliteConnection connection, string sql)
@@ -475,6 +563,9 @@ public sealed class OutboxRepository : IDisposable
         PrintedAt = reader.IsDBNull(reader.GetOrdinal("printed_at"))
             ? null
             : ParseTimestamp(reader.GetString(reader.GetOrdinal("printed_at"))),
+        ReviewedAt = reader.IsDBNull(reader.GetOrdinal("reviewed_at"))
+            ? null
+            : ParseTimestamp(reader.GetString(reader.GetOrdinal("reviewed_at"))),
     };
 
     private static string ToDb(OutboxJobState state) => state switch

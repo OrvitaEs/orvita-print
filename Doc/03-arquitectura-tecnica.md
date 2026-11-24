@@ -258,6 +258,14 @@ bucle:
     detener el poller y marcar «token inválido» (visible en `orvitaprint status` y en el panel)
 ```
 
+> **Re-escaneo (comportamiento del agente, aditivo — GUI-15):** el cursor solo avanza, así que un
+> trabajo que el panel reencola («Reimprimir ticket») conserva su id y el `GET /jobs?after=cursor`
+> no lo devolvería nunca hasta reiniciar. Cuando el heartbeat reporta `pending_count > 0` y el
+> fetch con el cursor vuelve VACÍO, el poller re-escanea UNA vez desde `after=0` y lo recupera.
+> Es seguro: el claim es atómico y los trabajos terminales no aparecen en el listado de
+> pendientes. Queda registrado en el log («re-escaneo: el servidor reporta pendientes que el
+> cursor no ve») y se repite una vez por latido como máximo.
+
 ### 6.4 Cola local y recuperación
 
 Estados locales: `received` → `printing` → `done` / `error`.

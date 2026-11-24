@@ -18,6 +18,15 @@ public sealed class FakeServerTransport : ITransport, IJobReleaseTransport
 
     public List<JobResult> Acks { get; } = [];
 
+    /// <summary>Acks detallados con respuesta (GUI-15): el último comportamiento registrado gana.</summary>
+    public List<(long JobId, JobResult Result)> DetailedAcks { get; } = [];
+
+    /// <summary>Respuesta que AckDetailedAsync devuelve (null → el transporte no la lee).</summary>
+    public DocumentAck? NextAckResponse { get; set; }
+
+    /// <summary>Excepción que AckDetailedAsync lanza en la próxima llamada (p. ej. red caída).</summary>
+    public Exception? ThrowOnNextAck { get; set; }
+
     public List<(long JobId, string Reason)> Releases { get; } = [];
 
     public int FetchCalls { get; private set; }
@@ -54,6 +63,19 @@ public sealed class FakeServerTransport : ITransport, IJobReleaseTransport
         return Task.CompletedTask;
     }
 
+    public async Task<DocumentAck?> AckDetailedAsync(long jobId, JobResult result, CancellationToken ct)
+    {
+        DetailedAcks.Add((jobId, result));
+        if (ThrowOnNextAck is { } error)
+        {
+            ThrowOnNextAck = null;
+            throw error;
+        }
+
+        await Task.CompletedTask;
+        return NextAckResponse;
+    }
+
     public Task ReleaseAsync(long jobId, string reason, CancellationToken ct)
     {
         Releases.Add((jobId, reason));
@@ -66,6 +88,13 @@ public sealed class FakePrintTransport(
     Queue<PrintFailureKind?>? script = null) : IPrintTransport
 {
     public int Calls { get; private set; }
+
+    /// <summary>Punto de partida para contar solo las llamadas de un tramo (pruebas GUI-15).</summary>
+    public int CallsAtMark { get; private set; }
+
+    public void MarkCalls() => CallsAtMark = Calls;
+
+    public int CallsSinceMark => Calls - CallsAtMark;
 
     public List<PrintRequest> Requests { get; } = [];
 

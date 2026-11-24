@@ -92,6 +92,9 @@ public partial class MainViewModel : ObservableObject
         Diagnostics = new DiagnosticsViewModel(client);
         Settings = new SettingsViewModel(client);
         About = new AboutViewModel();
+
+        // GUI-15: una reimpresión que vuelve a fallar también dispara el balón de bandeja.
+        Queue.BalloonRequested += balloon => BalloonRequested?.Invoke(balloon);
     }
 
     /// <summary>

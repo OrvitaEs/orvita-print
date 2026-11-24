@@ -80,6 +80,29 @@ public sealed class JobProcessor
             .OrderByDescending(j => j.UpdatedAt)
             .FirstOrDefault()?.ErrorMessage;
 
+    /// <summary>Estado del resultado de una reimpresión local (GUI-15, decisión A).</summary>
+    public enum LocalRetryStatus
+    {
+        /// <summary>El trabajo no está en la cola local.</summary>
+        NotFound,
+
+        /// <summary>El trabajo no está en error/done (o la salida no existe): sin cambios.</summary>
+        NotRetryable,
+
+        /// <summary>Reimpresión ejecutada: el trabajo quedó done o error (ver el OutboxJob).</summary>
+        Completed,
+    }
+
+    /// <summary>Resultado de <see cref="RetryAsync"/>: el trabajo actualizado (o el motivo).</summary>
+    public sealed record LocalRetryResult(
+        long JobId,
+        LocalRetryStatus Status,
+        OutboxJob? Job,
+        string? Reason = null)
+    {
+        public static LocalRetryResult NotFound(long jobId) => new(jobId, LocalRetryStatus.NotFound, null);
+    }
+
     /// <summary>Punto de entrada del Poller: cada trabajo del lote.</summary>
     public Task ProcessJobAsync(Job job, CancellationToken cancellationToken) =>
         ProcessClaimedFlowAsync(job.Id, job.PrinterRole, cancellationToken);
@@ -91,6 +114,285 @@ public sealed class JobProcessor
         {
             cancellationToken.ThrowIfCancellationRequested();
             await ProcessClaimedFlowAsync(row.JobId, row.PrinterRole, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    // ----------------------------------------------------------------- reimpresión local (GUI-15)
+
+    /// <summary>
+    /// Reimprimir un trabajo de la cola local (GUI-15, decisión A): el outbox ya tiene el
+    /// documento — el agente NO necesita al servidor para sacar papel. Válido para trabajos
+    /// en <c>error</c> y en <c>done</c>. NUNCA lanza: los problemas son estados visibles.
+    /// <list type="bullet">
+    /// <item>Primero se intenta reclamar en el servidor (best-effort): si el trabajo sigue
+    /// <c>pending</c> allí (p. ej. release anterior), el claim lo recupera y evita que la
+    /// ronda del poller lo reimprima de nuevo (duplicado).</item>
+    /// <item>Si no se puede reclamar (delivered/failed terminal, otro agente o red caída),
+    /// se imprime 100 % LOCAL: el servidor queda como estaba y el ack es de cortesía
+    /// (decisión B — el ack del plugin es idempotente y responde job_status sin error).</item>
+    /// </list>
+    /// </summary>
+    public async Task<LocalRetryResult> RetryAsync(long jobId, CancellationToken cancellationToken)
+    {
+        var row = _outbox.Get(jobId);
+        if (row is null)
+        {
+            return LocalRetryResult.NotFound(jobId);
+        }
+
+        if (row.State is OutboxJobState.Received or OutboxJobState.Printing)
+        {
+            return new LocalRetryResult(
+                jobId, LocalRetryStatus.NotRetryable, row,
+                "El trabajo ya está pendiente o imprimiéndose en la cola local.");
+        }
+
+        if (row.State is not (OutboxJobState.Error or OutboxJobState.Done))
+        {
+            return new LocalRetryResult(jobId, LocalRetryStatus.NotRetryable, row, $"Estado «{row.State}» no re-imprimible.");
+        }
+
+        var destination = ResolveDestination(row.PrinterRole);
+        if (destination is null)
+        {
+            return new LocalRetryResult(
+                jobId, LocalRetryStatus.NotRetryable, row,
+                $"La salida «{row.PrinterRole ?? "default"}» no está configurada o está desactivada en este agente.");
+        }
+
+        _outbox.RetryRequeue(jobId); // error|done → received (limpia error y marca de revisión)
+        row = _outbox.Get(jobId)!;
+        _logger.LogInformation(
+            "Reimpresión local del trabajo {JobId} pedida por la GUI (estado anterior: {State}, intentos: {Attempts}).",
+            jobId, row.State, row.Attempts);
+
+        // Claim best-effort al servidor: 200 solo si el trabajo sigue pending allí.
+        Document? serverDocument = null;
+        var serverAttempt = 0;
+        try
+        {
+            var claimed = await _server().ClaimAsync(jobId, cancellationToken).ConfigureAwait(false);
+            if (claimed is not null)
+            {
+                serverAttempt = claimed.Attempt;
+                if (claimed.Document is not null)
+                {
+                    serverDocument = claimed.Document;
+                    _outbox.UpdateDocument(jobId, JsonSerializer.Serialize(claimed.Document, OrpJson.Default));
+                }
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // Sin servidor también se reimprime (reimpresión LOCAL): el ack de cortesía
+            // informará al servidor si vuelve a estar disponible.
+            _logger.LogWarning(
+                "No se pudo reclamar el trabajo {JobId} en el servidor ({Message}); se reimprime localmente con el documento del outbox.",
+                jobId, ex.Message);
+        }
+
+        row = _outbox.Get(jobId)!;
+        if (!_outbox.TryClaim(jobId))
+        {
+            // Otro hilo se lo llevó en el ínterin: reportamos su estado tal cual.
+            return new LocalRetryResult(jobId, LocalRetryStatus.NotRetryable, _outbox.Get(jobId), "El trabajo cambió de estado mientras se reclamaba.");
+        }
+
+        row = _outbox.Get(jobId)!;
+        await PrintRetryAsync(row, serverDocument, destination, serverAttempt, cancellationToken).ConfigureAwait(false);
+
+        row = _outbox.Get(jobId)!;
+        return new LocalRetryResult(jobId, LocalRetryStatus.Completed, row);
+    }
+
+    /// <summary>
+    /// Bucle de impresión de la reimpresión local (reintentos transitorios como el flujo
+    /// normal) con acks BEST-EFFORT: un fallo de red en el ack jamás revienta la operación
+    /// de la GUI (decisión B). Sin release al servidor: la reimpresión es local.
+    /// </summary>
+    private async Task PrintRetryAsync(
+        OutboxJob row,
+        Document? serverDocument,
+        DestinationOptions destination,
+        int serverAttempt,
+        CancellationToken cancellationToken)
+    {
+        Document document;
+        try
+        {
+            document = serverDocument ?? row.TryParseDocument()
+                ?? throw new PrintTransportException(
+                    PrintFailureKind.UnsupportedDocument,
+                    "El documento del trabajo no se pudo interpretar (JSON malformado).");
+            if (document.Version > 1)
+            {
+                throw new PrintTransportException(
+                    PrintFailureKind.UnsupportedDocument,
+                    $"Versión de documento {document.Version} no soportada por este agente (Doc/04 §8).");
+            }
+        }
+        catch (PrintTransportException ex)
+        {
+            _logger.LogError("El trabajo {JobId} no se puede reimprimir ({Code}): {Message}", row.JobId, ex.ErrorCode, ex.Message);
+            _outbox.MarkError(row.JobId, ex.ErrorCode, ex.Message);
+            await AckBestEffortAsync(row, destination, JobResultStatus.Failed, ex.ErrorCode, ex.Message, null, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        byte[] escPos;
+        try
+        {
+            escPos = Render(document);
+        }
+        catch (NotSupportedException ex)
+        {
+            _outbox.MarkError(row.JobId, ErrorCode.OrpUnsupportedDocument.ToWireCode(), ex.Message);
+            await AckBestEffortAsync(row, destination, JobResultStatus.Failed, ErrorCode.OrpUnsupportedDocument.ToWireCode(), ex.Message, null, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var request = new PrintRequest
+        {
+            JobId = row.JobId,
+            Destination = destination,
+            Document = document,
+            EscPos = escPos,
+            Copies = Math.Max(1, row.Copies),
+        };
+
+        var transport = _transportFactory.Create(destination);
+        var clock = Stopwatch.StartNew();
+        var attempt = 1;
+
+        while (true)
+        {
+            try
+            {
+                await transport.PrintAsync(request, cancellationToken).ConfigureAwait(false);
+
+                _outbox.MarkDone(row.JobId);
+                _logger.LogInformation(
+                    "Trabajo {JobId} reimpreso en «{Printer}» ({Copies} copia(s), {Elapsed} ms).",
+                    row.JobId, destination.PrinterName ?? destination.Address ?? destination.Role, request.Copies, clock.ElapsedMilliseconds);
+
+                await AckRetryDeliveredAsync(row, destination, serverAttempt, clock.ElapsedMilliseconds, cancellationToken).ConfigureAwait(false);
+                return;
+            }
+            catch (PrintTransportException ex) when (ex.Kind == PrintFailureKind.Transient)
+            {
+                if (attempt >= Math.Max(1, _options.MaxTransientRetries))
+                {
+                    _logger.LogError(
+                        "La reimpresión del trabajo {JobId} agotó los reintentos transitorios: {Message}",
+                        row.JobId, ex.Message);
+                    _outbox.MarkError(row.JobId, ex.ErrorCode, ex.Message);
+                    await AckBestEffortAsync(row, destination, JobResultStatus.Failed, ex.ErrorCode, ex.Message, null, cancellationToken).ConfigureAwait(false);
+                    return;
+                }
+
+                _logger.LogWarning(
+                    "Fallo transitorio reimprimiendo el trabajo {JobId} (intento {Attempt}/{Max}): {Message}",
+                    row.JobId, attempt, _options.MaxTransientRetries, ex.Message);
+
+                await Task.Delay(_options.TransientRetryDelay * attempt, cancellationToken).ConfigureAwait(false);
+                attempt++;
+            }
+            catch (PrintTransportException ex)
+            {
+                _logger.LogError(
+                    "La reimpresión del trabajo {JobId} falló definitivamente ({Code}): {Message}",
+                    row.JobId, ex.ErrorCode, ex.Message);
+                _outbox.MarkError(row.JobId, ex.ErrorCode, ex.Message);
+                await AckBestEffortAsync(row, destination, JobResultStatus.Failed, ex.ErrorCode, ex.Message, clock.ElapsedMilliseconds, cancellationToken).ConfigureAwait(false);
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ack de cortesía (decisión B): intenta ack delivered tras una reimpresión exitosa. Si
+    /// el servidor mantiene el trabajo en <c>failed</c> (terminal: el ack es idempotente y
+    /// responde su estado real sin error), se registra en el log y se sigue — la GUI nunca
+    /// ve un error por esto.
+    /// </summary>
+    private async Task AckRetryDeliveredAsync(
+        OutboxJob row,
+        DestinationOptions destination,
+        int serverAttempt,
+        long elapsedMs,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var ack = await _server().AckDetailedAsync(
+                row.JobId,
+                new JobResult
+                {
+                    Status = JobResultStatus.Delivered,
+                    Attempt = serverAttempt > 0 ? serverAttempt : row.Attempts,
+                    Printer = destination.PrinterName,
+                    ElapsedMs = elapsedMs,
+                },
+                cancellationToken).ConfigureAwait(false);
+
+            if (ack is { JobStatus: not null and not "delivered" })
+            {
+                _logger.LogWarning(
+                    "Papel impreso localmente para el trabajo {JobId}; el servidor mantiene {ServerStatus} — " +
+                    "usa «Reimprimir ticket» del panel para regenerar el trabajo en la cola del servidor.",
+                    row.JobId, ack.JobStatus);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                "El ack de cortesía del trabajo {JobId} no llegó al servidor (best-effort): {Message}",
+                row.JobId, ex.Message);
+        }
+    }
+
+    /// <summary>Ack failed best-effort: igual que el flujo normal pero SIN propagar el fallo.</summary>
+    private async Task AckBestEffortAsync(
+        OutboxJob row,
+        DestinationOptions destination,
+        JobResultStatus status,
+        string errorCode,
+        string message,
+        long? elapsedMs,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _server().AckDetailedAsync(
+                row.JobId,
+                new JobResult
+                {
+                    Status = status,
+                    Attempt = row.Attempts > 0 ? row.Attempts : 1,
+                    Printer = destination.PrinterName,
+                    ElapsedMs = elapsedMs,
+                    ErrorCode = errorCode,
+                    Error = message,
+                },
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                "El ack de cortesía (failed) del trabajo {JobId} no llegó al servidor: {Message}",
+                row.JobId, ex.Message);
         }
     }
 

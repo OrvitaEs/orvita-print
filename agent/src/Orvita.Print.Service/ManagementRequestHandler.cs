@@ -64,6 +64,15 @@ public sealed class QueueItemArgs
     public long? JobId { get; set; }
 }
 
+/// <summary>Argumentos de queue.review: la marca local «revisada» (GUI-15, decisión D).</summary>
+public sealed class QueueReviewArgs
+{
+    public long? JobId { get; set; }
+
+    /// <summary>true → marcar; false → quitar la marca (por defecto true).</summary>
+    public bool? Reviewed { get; set; }
+}
+
 /// <summary>
 /// Despachador de operaciones de la pipe de gestión (F2-08, ADR-13): pair, destination
 /// add/list/remove, status, test, doctor y restart-poller. NO expone el token NUNCA (S-05):
@@ -85,6 +94,7 @@ public sealed class ManagementRequestHandler
     private readonly AgentOptions _options;
     private readonly DiagnosticsBundleBuilder? _diagnostics;
     private readonly LicenseState? _license;
+    private readonly JobProcessor? _processor;
     private readonly ILogger _logger;
 
     public ManagementRequestHandler(
@@ -100,7 +110,8 @@ public sealed class ManagementRequestHandler
         AgentOptions options,
         ILogger<ManagementRequestHandler> logger,
         DiagnosticsBundleBuilder? diagnostics = null,
-        LicenseState? license = null)
+        LicenseState? license = null,
+        JobProcessor? processor = null)
     {
         _connection = connection;
         _store = store;
@@ -115,6 +126,7 @@ public sealed class ManagementRequestHandler
         _logger = logger;
         _diagnostics = diagnostics;
         _license = license;
+        _processor = processor;
     }
 
     /// <summary>Procesa una solicitud. Nunca lanza: los errores van como respuesta (ok:false).</summary>
@@ -174,6 +186,8 @@ public sealed class ManagementRequestHandler
             ManagementProtocol.Operations.RestartPoller => await RestartPollerAsync(request, cancellationToken).ConfigureAwait(false),
             ManagementProtocol.Operations.QueueList => QueueList(request),
             ManagementProtocol.Operations.QueueItem => QueueItem(request),
+            ManagementProtocol.Operations.QueueRetry => await QueueRetryAsync(request, cancellationToken).ConfigureAwait(false),
+            ManagementProtocol.Operations.QueueReview => QueueReview(request),
             _ => ManagementResponse.Failure(request.Id, $"Operación desconocida «{request.Op}».", "unknown_operation"),
         };
     }
@@ -387,6 +401,7 @@ public sealed class ManagementRequestHandler
                     state = lastJob.State.ToString().ToLowerInvariant(),
                     attempts = lastJob.Attempts,
                     duplicate_suspected = lastJob.DuplicateSuspected,
+                    reviewed_at = lastJob.ReviewedAt,
                     error = lastJob.ErrorMessage,
                     created_at = lastJob.CreatedAt,
                     updated_at = lastJob.UpdatedAt,
@@ -575,7 +590,66 @@ public sealed class ManagementRequestHandler
         created_at = job.CreatedAt,
         updated_at = job.UpdatedAt,
         printed_at = job.PrintedAt,
+        // Marca local «revisada» (GUI-15): la GUI la muestra como «Error · revisado» y la
+        // saca del banner de incidencias. El estado del servidor no cambia (decisión D).
+        reviewed_at = job.ReviewedAt,
     };
+
+    // -------------------------------------------------------------- queue.retry / queue.review (GUI-15)
+
+    /// <summary>
+    /// Reimprimir un trabajo de la cola local (GUI-15, decisión A): reseteo a <c>received</c>
+    /// + impresión local inmediata. Devuelve el estado FINAL local (done/error) para que la
+    /// GUI pinte la fila al vuelo. Errores: job_not_found / job_not_retryable.
+    /// </summary>
+    private async Task<ManagementResponse> QueueRetryAsync(ManagementRequest request, CancellationToken cancellationToken)
+    {
+        var args = BindArgs<QueueItemArgs>(request);
+        if (args.JobId is not { } jobId || jobId <= 0)
+        {
+            return ManagementResponse.Failure(request.Id, "Falta el job_id del trabajo (queue.retry {job_id}).", "invalid_argument");
+        }
+
+        if (_processor is null)
+        {
+            return ManagementResponse.Failure(request.Id, "El procesador de trabajos no está disponible en este servicio.", "queue_retry_unavailable");
+        }
+
+        var result = await _processor.RetryAsync(jobId, cancellationToken).ConfigureAwait(false);
+        return result.Status switch
+        {
+            JobProcessor.LocalRetryStatus.NotFound => ManagementResponse.Failure(
+                request.Id, $"El trabajo {jobId} no está en la cola local (o ya se purgó).", "job_not_found"),
+            JobProcessor.LocalRetryStatus.NotRetryable => ManagementResponse.Failure(
+                request.Id,
+                $"El trabajo {jobId} no se puede reimprimir: {result.Reason}",
+                "job_not_retryable"),
+            _ => ManagementResponse.Success(request.Id, ToQueueWire(result.Job!)),
+        };
+    }
+
+    /// <summary>
+    /// Marcar/quitar la marca local «revisada» (GUI-15, decisión D): el TPV ya gestionó la
+    /// incidencia. NO cambia el estado del servidor (<c>failed</c> es la verdad operativa).
+    /// </summary>
+    private ManagementResponse QueueReview(ManagementRequest request)
+    {
+        var args = BindArgs<QueueReviewArgs>(request);
+        if (args.JobId is not { } jobId || jobId <= 0)
+        {
+            return ManagementResponse.Failure(request.Id, "Falta el job_id del trabajo (queue.review {job_id}).", "invalid_argument");
+        }
+
+        if (!_outbox.SetReviewed(jobId, args.Reviewed ?? true))
+        {
+            return ManagementResponse.Failure(request.Id, $"El trabajo {jobId} no está en la cola local (o ya se purgó).", "job_not_found");
+        }
+
+        _logger.LogInformation(
+            "Trabajo {JobId} marcado como {Mark} por la GUI (marca local: el estado del servidor no cambia).",
+            jobId, (args.Reviewed ?? true) ? "REVISADO" : "sin revisar");
+        return ManagementResponse.Success(request.Id, ToQueueWire(_outbox.Get(jobId)!));
+    }
 
     // ---------------------------------------------------------------------- restart-poller
 
